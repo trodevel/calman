@@ -20,62 +20,94 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 448 2014-04-25 17:26:21Z serge $
+// $Id: job.cpp 459 2014-04-28 16:59:39Z serge $
 
 #include "job.h"                    // self
 
 #include "call_manager.h"           // CallManager
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/dummy_logger.h"      // dummy_log
 
 NAMESPACE_CALMAN_START
 
-Job::Job( uint32 id, CallManager * parent ):
-        status_( UNDEF ), id_( id ), call_( 0L ), parent_( parent ), cb_( 0L )
+#define MODULENAME      "Job"
+
+Job::Job( const std::string & party, const std::string & scen ):
+        state_( UNDEF ), call_( 0L ), party_( party ), scen_( scen )
 {
 }
 Job::~Job()
 {
 }
 
-uint32 Job::get_id() const
+// IJob interface
+std::string Job::get_property( const std::string & name ) const
 {
-    SCOPE_LOCK( mutex_ );
-    return id_;
-}
-IJob::status_e Job::get_status() const
-{
-    SCOPE_LOCK( mutex_ );
-    return status_;
-}
-bool Job::cancel()
-{
-    SCOPE_LOCK( mutex_ );
-    return parent_->cancel_job( id_ );
-}
-bool Job::is_alive() const
-{
-    SCOPE_LOCK( mutex_ );
-    return ( status_ == WAITING ) || ( status_ == ACTIVE );
-}
-dialer::CallI* Job::get_call()
-{
-    SCOPE_LOCK( mutex_ );
-    return call_;
-}
-bool Job::register_callback( IJobCallback * cb )
-{
-    if( cb == 0L )
-        return false;
-
     SCOPE_LOCK( mutex_ );
 
-    if( cb_ != 0L )
-        return false;
+    static const std::string empty;
 
-    cb_ = cb;
+    if( name == "party" )
+        return party_;
 
-    return true;
+    if( name == "scen" )
+        return scen_;
+
+    return empty;
+}
+
+void Job::on_activate()
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ == IDLE )
+    {
+        state_ = ACTIVE;
+    }
+    else
+    {
+        dummy_log( 0, MODULENAME, "on_activate: ignored in state %u", state_ );
+    }
+}
+void Job::on_call_ready( dialer::CallI* call )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ == ACTIVE )
+    {
+        call_ = call;
+    }
+    else
+    {
+        dummy_log( 0, MODULENAME, "on_call_ready: ignored in state %u", state_ );
+    }
+}
+void Job::on_error( uint32 errorcode )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ == ACTIVE || state_ == IDLE )
+    {
+        state_ = DONE;
+    }
+    else
+    {
+        dummy_log( 0, MODULENAME, "on_error: ignored in state %u", state_ );
+    }
+}
+void Job::on_finished()
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ == ACTIVE )
+    {
+        state_ = DONE;
+    }
+    else
+    {
+        dummy_log( 0, MODULENAME, "on_error: ignored in state %u", state_ );
+    }
 }
 
 NAMESPACE_CALMAN_END

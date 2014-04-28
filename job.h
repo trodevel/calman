@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 448 2014-04-25 17:26:21Z serge $
+// $Id: job.h 458 2014-04-28 16:56:18Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -38,31 +38,35 @@ class CallManager;
 class Job: public IJob
 {
 public:
+    enum status_e
+    {
+        UNDEF,
+        IDLE,
+        ACTIVE,
+        DONE
+    };
 
 public:
-    Job( uint32 id, CallManager * parent );
+    Job( const std::string & party, const std::string & scen );
     ~Job();
 
     // IJob interface
-    uint32 get_id() const;
-    IJob::status_e get_status() const;
-    bool cancel();
-    bool is_alive() const;
-    dialer::CallI* get_call();
-    bool register_callback( IJobCallback * cb );
+    std::string get_property( const std::string & name ) const  = 0;
+
+    virtual void on_activate()                                  = 0;
+    virtual void on_call_ready( dialer::CallI* call )           = 0;
+    virtual void on_error( uint32 errorcode )                   = 0;
+    virtual void on_finished()                                  = 0;
 
 private:
     mutable boost::mutex    mutex_;
 
-    status_e                status_;
-
-    uint32                  id_;
+    status_e                state_;
 
     dialer::CallI           * call_;
 
-    CallManager             * parent_;
-
-    IJobCallback            * cb_;
+    std::string             party_;
+    std::string             scen_;
 };
 
 NAMESPACE_CALMAN_END

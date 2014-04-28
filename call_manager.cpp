@@ -20,27 +20,45 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 453 2014-04-25 18:03:03Z serge $
+// $Id: call_manager.cpp 457 2014-04-28 16:34:59Z serge $
 
 #include "call_manager.h"                 // self
 
+#include <boost/thread.hpp>             // boost::this_thread
+
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/dummy_logger.h"      // dummy_log
 #include "../dialer/i_dialer.h"         // IDialer
 
 #include "job.h"                        // Job
 
+#define MODULENAME      "CallManager"
 
 NAMESPACE_CALMAN_START
 
 CallManager::CallManager():
-    state_( UNDEF ), dialer_( 0L ), last_id_( 0 )
+    state_( UNDEF ), dialer_( 0L ), curr_job_( 0L ), last_id_( 0 )
 {
 }
 CallManager::~CallManager()
 {
+    SCOPE_LOCK( mutex_ );
+
+    for( auto s : jobs_ )
+    {
+        delete s;
+    }
+
+    jobs_.clear();
+
+    if( curr_job_ )
+    {
+        delete curr_job_;
+        curr_job_   = 0L;
+    }
 }
 
-bool CallManager::init( dialer::IDialer * dialer )
+bool CallManager::init( dialer::IDialer * dialer, const Config & cfg )
 {
     if( dialer == 0L )
         return false;
@@ -51,8 +69,45 @@ bool CallManager::init( dialer::IDialer * dialer )
         return false;
 
     dialer_ = dialer;
+    cfg_    = cfg;
 
     return true;
+}
+
+void CallManager::thread_func()
+{
+    dummy_log( 0, MODULENAME, "thread_func: started" );
+
+    bool should_run    = true;
+    while( should_run )
+    {
+        SCOPE_LOCK( mutex_ );
+
+        switch( state_ )
+        {
+        case IDLE:
+            process_jobs();
+            break;
+
+        case BUSY:
+            break;
+
+        default:
+            break;
+        }
+
+        THREAD_SLEEP_MS( cfg_.sleep_time_ms );
+    }
+
+    dummy_log( 0, MODULENAME, "thread_func: ended" );
+}
+
+void CallManager::process_jobs()
+{
+    if( jobs_.empty() )
+        return;
+
+    Job * job = jobs_.pop_front();
 }
 
 // ICallManager interface
@@ -100,12 +155,13 @@ void CallManager::on_ready()
 
     if( state_ == IDLE )
     {
-        // TODO error
+        dummy_log( 0, MODULENAME, "on_ready: ignored in state %s", "IDLE" );
         return;
     }
 
     if( state_ == BUSY )
     {
+        dummy_log( 0, MODULENAME, "on_ready: switching into state %s", "IDLE" );
         state_  = IDLE;
     }
 
@@ -118,12 +174,13 @@ void CallManager::on_busy()
 
     if( state_ == BUSY )
     {
-        // TODO error
+        dummy_log( 0, MODULENAME, "on_busy: ignored in state %s", "BUSY" );
         return;
     }
 
     if( state_ == IDLE )
     {
+        dummy_log( 0, MODULENAME, "on_busy: switching into state %s", "BUSY" );
         state_  = BUSY;
     }
 }

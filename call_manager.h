@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 453 2014-04-25 18:03:03Z serge $
+// $Id: call_manager.h 457 2014-04-28 16:34:59Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -45,12 +45,17 @@ class Job;
 class CallManager: public virtual ICallManager, public virtual dialer::IDialerCallback
 {
 public:
+    struct Config
+    {
+        uint32  sleep_time_ms;  // try 3 ms
+    };
 
 public:
     CallManager();
     ~CallManager();
 
-    bool init( dialer::IDialer * dialer );
+    bool init( dialer::IDialer * dialer, const Config & cfg );
+    void thread_func();
 
     // ICallManager interface
     IJob* create_call_job( const std::string & party );
@@ -65,17 +70,24 @@ public:
     void on_error( uint32 errorcode );
 
 private:
+    void process_jobs();
+
+private:
 
     typedef std::list<Job*>     JobList;
 
 private:
     mutable boost::mutex        mutex_;
 
+    Config                      cfg_;
+
     state_e                     state_;
 
     JobList                     jobs_;
 
     dialer::IDialer             * dialer_;
+
+    Job                         * curr_job_;
 
     uint32                      last_id_;
 };

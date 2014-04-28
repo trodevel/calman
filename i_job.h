@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_job.h 448 2014-04-25 17:26:21Z serge $
+// $Id: i_job.h 459 2014-04-28 16:59:39Z serge $
 
 #ifndef CALMAN_I_JOB_H
 #define CALMAN_I_JOB_H
@@ -37,29 +37,18 @@ class CallI;
 
 NAMESPACE_CALMAN_START
 
-class IJobCallback;
-
 class IJob
 {
 public:
 
-    enum status_e
-    {
-        UNDEF   = 0,
-        WAITING,
-        ACTIVE,
-        DONE
-    };
-
-public:
     virtual ~IJob() {};
 
-    virtual uint32 get_id() const                   = 0;
-    virtual status_e get_status() const             = 0;
-    virtual bool cancel()                           = 0;
-    virtual bool is_alive() const                   = 0;
-    virtual dialer::CallI* get_call()               = 0;
-    virtual bool register_callback( IJobCallback * cb ) = 0;
+    virtual std::string get_property( const std::string & name ) const  = 0;
+
+    virtual void on_activate()                                  = 0;
+    virtual void on_call_ready( dialer::CallI* call )           = 0;
+    virtual void on_error( uint32 errorcode )                   = 0;
+    virtual void on_finished()                                  = 0;
 };
 
 NAMESPACE_CALMAN_END
