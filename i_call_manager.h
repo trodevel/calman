@@ -20,13 +20,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 453 2014-04-25 18:03:03Z serge $
+// $Id: i_call_manager.h 485 2014-04-30 17:06:58Z serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H
 
 #include <string>                   // std::string
-#include "../utils/Types.h"         // uint32
+#include "../utils/types.h"         // uint32
 
 #include "namespace_calman.h"       // NAMESPACE_CALMAN_START
 #include "i_job.h"                  // IJob
@@ -46,10 +46,8 @@ public:
 public:
     virtual ~ICallManager() {};
 
-    virtual IJob* create_call_job( const std::string & party )      = 0;
-    virtual bool cancel_job( uint32 id )                            = 0;
-    virtual bool cancel_job( const IJob * job )                     = 0;
-    virtual IJob* get_job( uint32 id )                              = 0;
+    virtual bool insert_job( IJob * job )                           = 0;
+    virtual bool remove_job( IJob * job )                           = 0;
 
     virtual bool shutdown()                                         = 0;
 };

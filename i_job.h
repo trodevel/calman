@@ -20,13 +20,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_job.h 459 2014-04-28 16:59:39Z serge $
+// $Id: i_job.h 478 2014-04-29 17:50:59Z serge $
 
 #ifndef CALMAN_I_JOB_H
 #define CALMAN_I_JOB_H
 
 #include <string>                   // std::string
-#include "../utils/Types.h"         // uint32
+#include "../utils/types.h"         // uint32
 
 #include "namespace_calman.h"       // NAMESPACE_CALMAN_START
 
