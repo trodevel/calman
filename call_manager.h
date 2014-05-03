@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 485 2014-04-30 17:06:58Z serge $
+// $Id: call_manager.h 494 2014-05-02 17:54:07Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -63,6 +63,7 @@ public:
     bool shutdown();
 
     // IDialerCallback interface
+    void on_registered( bool b );
     void on_ready();
     void on_busy();
     void on_error( uint32 errorcode );

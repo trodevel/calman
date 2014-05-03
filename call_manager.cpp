@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 485 2014-04-30 17:06:58Z serge $
+// $Id: call_manager.cpp 494 2014-05-02 17:54:07Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -100,6 +100,8 @@ void CallManager::thread_func()
 
 void CallManager::process_jobs()
 {
+    // private: no MUTEX lock needed
+
     if( jobs_.empty() )
         return;
 
@@ -112,6 +114,8 @@ void CallManager::process_jobs()
 
 bool CallManager::process_job( IJob * job )
 {
+    // private: no MUTEX lock needed
+
     ASSERT( job );  // job must be empty
 
     job->on_activate();
@@ -179,6 +183,25 @@ bool CallManager::shutdown()
 }
 
 // IDialerCallback interface
+void CallManager::on_registered( bool b )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ != UNDEF )
+    {
+        dummy_log( 0, MODULENAME, "on_register: ignored in state %d", state_ );
+        return;
+    }
+
+    if( b == false )
+    {
+        dummy_log( 0, MODULENAME, "on_register: ERROR: cannot register" );
+        return;
+    }
+
+    state_  = IDLE;
+}
+
 void CallManager::on_ready()
 {
     SCOPE_LOCK( mutex_ );
