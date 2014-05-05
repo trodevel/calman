@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 494 2014-05-02 17:54:07Z serge $
+// $Id: call_manager.cpp 507 2014-05-05 17:21:42Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -107,18 +107,20 @@ void CallManager::process_jobs()
 
     ASSERT( curr_job_ == 0L );  // curr_job_ must be empty
 
-    curr_job_ = jobs_.pop_front();
+    curr_job_ = jobs_.front();
+
+    jobs_.pop_front();
 
     process_job( curr_job_ );
 }
 
-bool CallManager::process_job( IJob * job )
+bool CallManager::process_job( IJobPtr job )
 {
     // private: no MUTEX lock needed
 
     ASSERT( job );  // job must be empty
 
-    job->on_activate();
+    job->on_preparing();
 
     std::string party = job->get_property( "party" );
 
@@ -128,47 +130,49 @@ bool CallManager::process_job( IJob * job )
 
     if( b == false)
     {
-        dummy_log( 0, MODULENAME, "failed to initiate call: job %p, party %s", job, party.c_str() );
+        dummy_log( 0, MODULENAME, "failed to initiate call: job %p, party %s", job.get(), party.c_str() );
 
         return false;
     }
 
-    boost::shared_ptr< CallI > call = dialer_->get_call();
+    boost::shared_ptr< dialer::CallI > call = dialer_->get_call();
 
     job->on_call_ready( call );
+
+    call->register_callback( dynamic_cast< dialer::ICallCallback* >( job.get() ) );
 
     return true;
 }
 
-bool CallManager::insert_job( IJob * job )
+bool CallManager::insert_job( IJobPtr job )
 {
     SCOPE_LOCK( mutex_ );
 
     if( std::find( jobs_.begin(), jobs_.end(), job ) != jobs_.end() )
     {
-        dummy_log( 0, MODULENAME, "insert_job: job %p already exists", job );
+        dummy_log( 0, MODULENAME, "insert_job: job %p already exists", job.get() );
 
         return false;
     }
 
     jobs_.push_back( job );
 
-    dummy_log( 0, MODULENAME, "insert_job: inserted job %p", job );
+    dummy_log( 0, MODULENAME, "insert_job: inserted job %p", job.get() );
 
     return true;
 }
-bool CallManager::remove_job( IJob * job )
+bool CallManager::remove_job( IJobPtr job )
 {
     SCOPE_LOCK( mutex_ );
 
     JobList::iterator it = std::find( jobs_.begin(), jobs_.end(), job );
     if( it == jobs_.end() )
     {
-        dummy_log( 0, MODULENAME, "ERROR: cannot remove job %p - it doesn't exist", job );
+        dummy_log( 0, MODULENAME, "ERROR: cannot remove job %p - it doesn't exist", job.get() );
         return false;
     }
 
-    dummy_log( 0, MODULENAME, "remove_job: removed job %p", job );
+    dummy_log( 0, MODULENAME, "remove_job: removed job %p", job.get() );
 
     jobs_.erase( it );
 

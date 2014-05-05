@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 494 2014-05-02 17:54:07Z serge $
+// $Id: call_manager.h 496 2014-05-05 16:13:15Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -58,8 +58,8 @@ public:
     void thread_func();
 
     // ICallManager interface
-    bool insert_job( IJob * job );
-    bool remove_job( IJob * job );
+    bool insert_job( IJobPtr job );
+    bool remove_job( IJobPtr job );
     bool shutdown();
 
     // IDialerCallback interface
@@ -70,11 +70,11 @@ public:
 
 private:
     void process_jobs();
-    bool process_job( IJob* job );
+    bool process_job( IJobPtr job );
 
 private:
 
-    typedef std::list<IJob*>    JobList;
+    typedef std::list<IJobPtr>  JobList;
 
 private:
     mutable boost::mutex        mutex_;
@@ -87,7 +87,7 @@ private:
 
     dialer::IDialer             * dialer_;
 
-    IJob                        * curr_job_;
+    IJobPtr                     curr_job_;
 
     uint32                      last_id_;
 };

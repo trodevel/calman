@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 458 2014-04-28 16:56:18Z serge $
+// $Id: job.h 506 2014-05-05 17:19:48Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -28,20 +28,23 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <string>                   // std::string
 #include <boost/thread.hpp>         // boost::mutex
 
+#include "i_job.h"                  // IJob
+#include "../dialer/i_call_callback.h"  // ICallCallback
 
-#include "i_job.h"                  // Job
+
 
 NAMESPACE_CALMAN_START
 
 class CallManager;
 
-class Job: public IJob
+class Job: virtual public IJob, virtual public dialer::ICallCallback
 {
 public:
     enum status_e
     {
         UNDEF,
         IDLE,
+        PREPARING,
         ACTIVE,
         DONE
     };
@@ -51,19 +54,29 @@ public:
     ~Job();
 
     // IJob interface
-    std::string get_property( const std::string & name ) const  = 0;
+    std::string get_property( const std::string & name ) const;
 
-    virtual void on_activate()                                  = 0;
-    virtual void on_call_ready( dialer::CallI* call )           = 0;
-    virtual void on_error( uint32 errorcode )                   = 0;
-    virtual void on_finished()                                  = 0;
+    void on_preparing();
+    void on_activate();
+    void on_call_ready( dialer::CallIPtr call );
+    void on_error( uint32 errorcode );
+    void on_finished();
+
+    // dialer::ICallCallback
+    void on_call_end( uint32 errorcode );
+    void on_dial();
+    void on_ring();
+    void on_connect();
+
+private:
+    void on_activate__();
 
 private:
     mutable boost::mutex    mutex_;
 
     status_e                state_;
 
-    dialer::CallI           * call_;
+    dialer::CallIPtr        call_;
 
     std::string             party_;
     std::string             scen_;

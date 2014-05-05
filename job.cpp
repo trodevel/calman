@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 459 2014-04-28 16:59:39Z serge $
+// $Id: job.cpp 506 2014-05-05 17:19:48Z serge $
 
 #include "job.h"                    // self
 
@@ -57,11 +57,33 @@ std::string Job::get_property( const std::string & name ) const
     return empty;
 }
 
-void Job::on_activate()
+void Job::on_preparing()
 {
     SCOPE_LOCK( mutex_ );
 
     if( state_ == IDLE )
+    {
+        state_ = PREPARING;
+    }
+    else
+    {
+        dummy_log( 0, MODULENAME, "on_preparing: ignored in state %u", state_ );
+    }
+}
+
+/**
+ * @brief on_activate() is called when the connection is established
+ */
+void Job::on_activate()
+{
+    SCOPE_LOCK( mutex_ );
+
+    on_activate__();
+}
+
+void Job::on_activate__()
+{
+    if( state_ == PREPARING )
     {
         state_ = ACTIVE;
     }
@@ -70,7 +92,7 @@ void Job::on_activate()
         dummy_log( 0, MODULENAME, "on_activate: ignored in state %u", state_ );
     }
 }
-void Job::on_call_ready( dialer::CallI* call )
+void Job::on_call_ready( dialer::CallIPtr call )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -87,7 +109,7 @@ void Job::on_error( uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == ACTIVE || state_ == IDLE )
+    if( state_ == PREPARING || state_ == ACTIVE || state_ == IDLE )
     {
         state_ = DONE;
     }
@@ -106,8 +128,26 @@ void Job::on_finished()
     }
     else
     {
-        dummy_log( 0, MODULENAME, "on_error: ignored in state %u", state_ );
+        dummy_log( 0, MODULENAME, "on_finished: ignored in state %u", state_ );
     }
+}
+
+
+// dialer::ICallCallback
+void Job::on_call_end( uint32 errorcode )
+{
+}
+void Job::on_dial()
+{
+}
+void Job::on_ring()
+{
+}
+void Job::on_connect()
+{
+    SCOPE_LOCK( mutex_ );
+
+    on_activate__();
 }
 
 NAMESPACE_CALMAN_END
