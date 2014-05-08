@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 506 2014-05-05 17:19:48Z serge $
+// $Id: job.cpp 516 2014-05-08 06:15:46Z serge $
 
 #include "job.h"                    // self
 
@@ -34,7 +34,7 @@ NAMESPACE_CALMAN_START
 #define MODULENAME      "Job"
 
 Job::Job( const std::string & party, const std::string & scen ):
-        state_( UNDEF ), call_( 0L ), party_( party ), scen_( scen )
+        state_( IDLE ), call_( 0L ), party_( party ), scen_( scen )
 {
 }
 Job::~Job()
@@ -63,6 +63,7 @@ void Job::on_preparing()
 
     if( state_ == IDLE )
     {
+        dummy_log( 0, MODULENAME, "on_preparing: switched to PREPARING" );
         state_ = PREPARING;
     }
     else
@@ -86,6 +87,7 @@ void Job::on_activate__()
     if( state_ == PREPARING )
     {
         state_ = ACTIVE;
+        dummy_log( 0, MODULENAME, "on_activate: switched to ACTIVE" );
     }
     else
     {
@@ -99,6 +101,7 @@ void Job::on_call_ready( dialer::CallIPtr call )
     if( state_ == ACTIVE )
     {
         call_ = call;
+        dummy_log( 0, MODULENAME, "on_call_ready: switched to ACTIVE" );
     }
     else
     {
@@ -112,6 +115,8 @@ void Job::on_error( uint32 errorcode )
     if( state_ == PREPARING || state_ == ACTIVE || state_ == IDLE )
     {
         state_ = DONE;
+
+        dummy_log( 0, MODULENAME, "on_error: switched to DONE" );
     }
     else
     {
@@ -125,6 +130,8 @@ void Job::on_finished()
     if( state_ == ACTIVE )
     {
         state_ = DONE;
+
+        dummy_log( 0, MODULENAME, "on_finished: switched to DONE" );
     }
     else
     {
