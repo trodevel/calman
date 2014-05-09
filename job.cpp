@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 516 2014-05-08 06:15:46Z serge $
+// $Id: job.cpp 523 2014-05-08 17:05:05Z serge $
 
 #include "job.h"                    // self
 
@@ -33,8 +33,8 @@ NAMESPACE_CALMAN_START
 
 #define MODULENAME      "Job"
 
-Job::Job( const std::string & party, const std::string & scen ):
-        state_( IDLE ), call_( 0L ), party_( party ), scen_( scen )
+Job::Job( const std::string & party ):
+        call_( 0L ), party_( party ), state_( IDLE )
 {
 }
 Job::~Job()
@@ -50,9 +50,6 @@ std::string Job::get_property( const std::string & name ) const
 
     if( name == "party" )
         return party_;
-
-    if( name == "scen" )
-        return scen_;
 
     return empty;
 }
@@ -88,6 +85,8 @@ void Job::on_activate__()
     {
         state_ = ACTIVE;
         dummy_log( 0, MODULENAME, "on_activate: switched to ACTIVE" );
+
+        on_custom_activate();
     }
     else
     {
@@ -132,6 +131,8 @@ void Job::on_finished()
         state_ = DONE;
 
         dummy_log( 0, MODULENAME, "on_finished: switched to DONE" );
+
+        on_custom_finished();
     }
     else
     {
@@ -155,6 +156,15 @@ void Job::on_connect()
     SCOPE_LOCK( mutex_ );
 
     on_activate__();
+}
+
+// virtual functions for overloading
+void Job::on_custom_activate()
+{
+}
+
+void Job::on_custom_finished()
+{
 }
 
 NAMESPACE_CALMAN_END

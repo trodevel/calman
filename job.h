@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 506 2014-05-05 17:19:48Z serge $
+// $Id: job.h 523 2014-05-08 17:05:05Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -50,11 +50,11 @@ public:
     };
 
 public:
-    Job( const std::string & party, const std::string & scen );
+    Job( const std::string & party );
     ~Job();
 
     // IJob interface
-    std::string get_property( const std::string & name ) const;
+    virtual std::string get_property( const std::string & name ) const;
 
     void on_preparing();
     void on_activate();
@@ -68,18 +68,25 @@ public:
     void on_ring();
     void on_connect();
 
+protected:
+    // virtual functions for overloading
+    virtual void on_custom_activate();
+    virtual void on_custom_finished();
+
 private:
     void on_activate__();
+
+protected:
+
+    dialer::CallIPtr        call_;
+
+    std::string             party_;
 
 private:
     mutable boost::mutex    mutex_;
 
     status_e                state_;
 
-    dialer::CallIPtr        call_;
-
-    std::string             party_;
-    std::string             scen_;
 };
 
 NAMESPACE_CALMAN_END
