@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 523 2014-05-08 17:05:05Z serge $
+// $Id: job.cpp 527 2014-05-09 06:05:33Z serge $
 
 #include "job.h"                    // self
 
@@ -97,10 +97,10 @@ void Job::on_call_ready( dialer::CallIPtr call )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == ACTIVE )
+    if( state_ == PREPARING )
     {
         call_ = call;
-        dummy_log( 0, MODULENAME, "on_call_ready: switched to ACTIVE" );
+        dummy_log( 0, MODULENAME, "on_call_ready: got CallI" );
     }
     else
     {

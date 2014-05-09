@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: say_job.h 522 2014-05-08 17:02:03Z serge $
+// $Id: say_job.h 524 2014-05-09 05:39:12Z serge $
 
 #ifndef CALMAN_SAY_JOB_H
 #define CALMAN_SAY_JOB_H
@@ -39,7 +39,12 @@ class CallManager;
 class SayJob: virtual public Job
 {
 public:
-    SayJob( const std::string & party, gspeak::GSpeak * gs, const std::string & text, uint32 start_delay = 0 );
+    SayJob(
+        const std::string   & party,
+        gspeak::GSpeak      * gs,
+        const std::string   & text,
+        const std::string   & temp_path,
+        uint32              start_delay = 0 );
     ~SayJob();
 
 protected:
@@ -53,6 +58,7 @@ private:
     gspeak::GSpeak          * gs_;
 
     std::string             text_;
+    std::string             temp_path_;
 
     uint32                  start_delay_;
 };

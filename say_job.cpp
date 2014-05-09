@@ -20,20 +20,26 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: say_job.cpp 522 2014-05-08 17:02:03Z serge $
+// $Id: say_job.cpp 524 2014-05-09 05:39:12Z serge $
 
 #include "say_job.h"                    // self
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
-#include "../gspeak/gspeak.h"       // GSpeak
+#include "../gspeak/gspeak.h"           // GSpeak
+#include "../utils/tune_wav.h"          // tune_wav
 
 NAMESPACE_CALMAN_START
 
 #define MODULENAME      "SayJob"
 
-SayJob::SayJob( const std::string & party, gspeak::GSpeak * gs, const std::string & text, uint32 start_delay ):
-        Job( party ), gs_( gs ), text_( text ), start_delay_( start_delay )
+SayJob::SayJob(
+        const std::string   & party,
+        gspeak::GSpeak      * gs,
+        const std::string   & text,
+        const std::string   & temp_path,
+        uint32              start_delay ):
+        Job( party ), gs_( gs ), text_( text ), temp_path_( temp_path ), start_delay_( start_delay )
 {
 }
 SayJob::~SayJob()
@@ -43,6 +49,52 @@ SayJob::~SayJob()
 // virtual functions for overloading
 void SayJob::on_custom_activate()
 {
+    if( call_ == 0 )
+    {
+        dummy_log( 0, MODULENAME, "ERROR: call is NULL" );
+        return;
+    }
+
+    if( !call_->is_active() )
+    {
+        dummy_log( 0, MODULENAME, "ERROR: call is not active" );
+        return;
+    }
+
+    if( text_.empty() )
+    {
+        dummy_log( 0, MODULENAME, "WARNING: text is empty" );
+        return;
+    }
+
+    static const std::string temp_name = std::string( temp_path_ ).append( "/" ).append( "say_job_raw.wav" );
+    static const std::string sample = std::string( temp_path_ ).append( "/" ).append( "say_job.wav" );
+
+    {
+
+        bool b = gs_->say( text_, temp_name );
+        if( b == false )
+        {
+            dummy_log( 0, MODULENAME, "ERROR: cannot generate text" );
+            return;
+        }
+    }
+
+    gs_->save_state();
+
+    tune_wav( temp_name, sample );
+
+    dummy_log( 0, MODULENAME, "DEBUG: playing '%s'", sample.c_str() );
+
+    {
+        bool b = call_->set_input_file( sample );
+
+        if( b == false )
+        {
+            dummy_log( 0, MODULENAME, "ERROR: failed sending '%s'", text_.c_str() );
+            return;
+        }
+    }
 }
 
 void SayJob::on_custom_finished()
