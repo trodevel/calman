@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 507 2014-05-05 17:21:42Z serge $
+// $Id: call_manager.cpp 533 2014-05-13 16:58:02Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -139,7 +139,7 @@ bool CallManager::process_job( IJobPtr job )
 
     job->on_call_ready( call );
 
-    call->register_callback( dynamic_cast< dialer::ICallCallback* >( job.get() ) );
+    call->register_callback( boost::dynamic_pointer_cast< dialer::ICallCallback, IJob>( job ) );
 
     return true;
 }
