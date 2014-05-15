@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 533 2014-05-13 16:58:02Z serge $
+// $Id: call_manager.cpp 534 2014-05-14 16:33:41Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -77,19 +77,21 @@ void CallManager::thread_func()
     bool should_run    = true;
     while( should_run )
     {
-        SCOPE_LOCK( mutex_ );
-
-        switch( state_ )
         {
-        case IDLE:
-            process_jobs();
-            break;
+            SCOPE_LOCK( mutex_ );
 
-        case BUSY:
-            break;
+            switch( state_ )
+            {
+            case IDLE:
+                process_jobs();
+                break;
 
-        default:
-            break;
+            case BUSY:
+                break;
+
+            default:
+                break;
+            }
         }
 
         THREAD_SLEEP_MS( cfg_.sleep_time_ms );
