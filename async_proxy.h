@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: async_proxy.h 544 2014-05-15 17:26:37Z serge $
+// $Id: async_proxy.h 547 2014-05-16 05:32:04Z serge $
 
 #ifndef CALMAN_ASYNC_PROXY_H
 #define CALMAN_ASYNC_PROXY_H
@@ -28,21 +28,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <list>
 #include <boost/thread.hpp>         // boost::mutex
 
-#include "../utils/types.h"         // uint32
+#include "i_async_proxy.h"          // IAsyncProxy, IEvent
 
 #include "namespace_calman.h"       // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
-
-class IEvent
-{
-public:
-    virtual ~IEvent() {}
-
-    virtual void invoke()   = 0;
-};
-
-typedef boost::shared_ptr< IEvent > IEventPtr;
 
 template< class CLOSURE >
 class Event: public virtual IEvent
@@ -70,7 +60,7 @@ inline Event<CLOSURE> *new_event( const CLOSURE &closure )
 }
 
 
-class AsyncProxy
+class AsyncProxy: public virtual IAsyncProxy
 {
 public:
     struct Config
@@ -85,8 +75,9 @@ public:
     bool init( const Config & cfg );
     void thread_func();
 
-    bool add_event( IEventPtr event );
-    bool remove_event( IEventPtr event );
+    // interface IAsyncProxy
+    virtual bool add_event( IEventPtr event );
+    virtual bool remove_event( IEventPtr event );
 
 private:
 
