@@ -1,6 +1,6 @@
 /*
 
-Dialer's async proxy.
+Async Proxy.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -19,60 +19,90 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: async_proxy.h 530 2014-05-12 17:07:29Z serge $
+// $Id: async_proxy.h 544 2014-05-15 17:26:37Z serge $
 
 #ifndef CALMAN_ASYNC_PROXY_H
 #define CALMAN_ASYNC_PROXY_H
 
-#include <list>                     // std::list
+#include <string>                   // std::string
+#include <list>
 #include <boost/thread.hpp>         // boost::mutex
 
-#include "../dialer/i_dialer.h"             // IDialer
-#include "../dialer/i_dialer_callback.h"    // IDialerCallback
+#include "../utils/types.h"         // uint32
 
 #include "namespace_calman.h"       // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
 
-class AsyncProxy: virtual public dialer::IDialer, virtual public dialer::IDialerCallback
+class IEvent
 {
+public:
+    virtual ~IEvent() {}
+
+    virtual void invoke()   = 0;
+};
+
+typedef boost::shared_ptr< IEvent > IEventPtr;
+
+template< class CLOSURE >
+class Event: public virtual IEvent
+{
+public:
+
+    Event( const CLOSURE & closure ):
+            closure( closure )
+    {
+    }
+
+    void invoke()
+    {
+        closure();
+    }
+
+public:
+    CLOSURE     closure;
+};
+
+template< class CLOSURE >
+inline Event<CLOSURE> *new_event( const CLOSURE &closure )
+{
+    return new Event<CLOSURE>( closure );
+}
+
+
+class AsyncProxy
+{
+public:
+    struct Config
+    {
+        uint32  sleep_time_ms;  // try 1 ms
+    };
+
 public:
     AsyncProxy();
     ~AsyncProxy();
 
-    bool init( dialer::IDialer  * dialer );
+    bool init( const Config & cfg );
+    void thread_func();
 
-    bool is_inited() const;
-
-    // interface IDialer
-    bool register_callback( dialer::IDialerCallback * callback );
-    bool initiate_call( const std::string & party, uint32 & status );
-    bool drop_all_calls();
-    boost::shared_ptr< dialer::CallI > get_call();
-    bool shutdown();
-
-    // interface IDialerCallback
-    void on_registered( bool b );
-    void on_ready();
-    void on_busy();
-    void on_error( uint32 errorcode );
-
-private:
-    bool is_inited__() const;
-    bool is_call_id_valid( uint32 call_id ) const;
-
-    void check_call_end( const char * event_name );
+    bool add_event( IEventPtr event );
+    bool remove_event( IEventPtr event );
 
 private:
 
-    typedef std::list<IJobPtr>  EventQueue;
+    bool has_events() const;
+    void check_queue();
 
 private:
-    mutable boost::mutex        mutex_;
 
-    dialer::IDialer             * dialer_;
+    typedef std::list< IEventPtr > EventList;
 
-    dialer::IDialerCallback     * callback_;
+private:
+    mutable boost::mutex    mutex_;
+
+    Config                  cfg_;
+
+    EventList               events_;
 };
 
 NAMESPACE_CALMAN_END
