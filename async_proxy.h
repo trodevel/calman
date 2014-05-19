@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: async_proxy.h 547 2014-05-16 05:32:04Z serge $
+// $Id: async_proxy.h 551 2014-05-16 17:18:34Z serge $
 
 #ifndef CALMAN_ASYNC_PROXY_H
 #define CALMAN_ASYNC_PROXY_H
@@ -33,32 +33,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "namespace_calman.h"       // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
-
-template< class CLOSURE >
-class Event: public virtual IEvent
-{
-public:
-
-    Event( const CLOSURE & closure ):
-            closure( closure )
-    {
-    }
-
-    void invoke()
-    {
-        closure();
-    }
-
-public:
-    CLOSURE     closure;
-};
-
-template< class CLOSURE >
-inline Event<CLOSURE> *new_event( const CLOSURE &closure )
-{
-    return new Event<CLOSURE>( closure );
-}
-
 
 class AsyncProxy: public virtual IAsyncProxy
 {
