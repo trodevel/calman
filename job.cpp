@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 527 2014-05-09 06:05:33Z serge $
+// $Id: job.cpp 576 2014-05-22 17:34:20Z serge $
 
 #include "job.h"                    // self
 
@@ -156,6 +156,10 @@ void Job::on_connect()
     SCOPE_LOCK( mutex_ );
 
     on_activate__();
+}
+
+void Job::on_call_duration( uint32 t )
+{
 }
 
 // virtual functions for overloading

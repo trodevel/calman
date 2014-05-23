@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 534 2014-05-14 16:33:41Z serge $
+// $Id: call_manager.cpp 571 2014-05-22 17:07:26Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -114,6 +114,8 @@ void CallManager::process_jobs()
     jobs_.pop_front();
 
     process_job( curr_job_ );
+
+    curr_job_.reset();
 }
 
 bool CallManager::process_job( IJobPtr job )

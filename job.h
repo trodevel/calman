@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 523 2014-05-08 17:05:05Z serge $
+// $Id: job.h 576 2014-05-22 17:34:20Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -67,6 +67,7 @@ public:
     void on_dial();
     void on_ring();
     void on_connect();
+    void on_call_duration( uint32 t );
 
 protected:
     // virtual functions for overloading

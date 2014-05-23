@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: say_job.h 524 2014-05-09 05:39:12Z serge $
+// $Id: say_job.h 577 2014-05-22 17:35:28Z serge $
 
 #ifndef CALMAN_SAY_JOB_H
 #define CALMAN_SAY_JOB_H
@@ -47,6 +47,8 @@ public:
         uint32              start_delay = 0 );
     ~SayJob();
 
+    virtual void on_call_duration( uint32 t );
+
 protected:
     // virtual functions for overloading
     void on_custom_activate();
@@ -61,6 +63,7 @@ private:
     std::string             temp_path_;
 
     uint32                  start_delay_;
+    bool                    is_job_done_;
 };
 
 NAMESPACE_CALMAN_END
