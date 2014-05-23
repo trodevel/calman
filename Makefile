@@ -82,7 +82,7 @@ EXE=
 
 #vpath %.cpp .
 
-SRCC = job.cpp call_manager.cpp say_job.cpp async_proxy.cpp
+SRCC = job.cpp call_manager.cpp say_job.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
 
 all: static
