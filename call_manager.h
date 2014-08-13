@@ -20,13 +20,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 496 2014-05-05 16:13:15Z serge $
+// $Id: call_manager.h 911 2014-08-13 16:42:24Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
 
 #include <list>
-#include <boost/thread.hpp>         // boost::mutex
+#include <boost/thread.hpp>             // boost::mutex
+#include <boost/thread/condition.hpp>   // boost::condition
 
 #include "i_call_manager.h"                 // IJob
 #include "../dialer/i_dialer_callback.h"    // IDialerCallback
@@ -71,6 +72,7 @@ public:
 private:
     void process_jobs();
     bool process_job( IJobPtr job );
+    void wakeup();
 
 private:
 
@@ -78,6 +80,8 @@ private:
 
 private:
     mutable boost::mutex        mutex_;
+    mutable boost::mutex        mutex_cond_;
+    mutable boost::condition    cond_;
 
     Config                      cfg_;
 

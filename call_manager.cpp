@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 571 2014-05-22 17:07:26Z serge $
+// $Id: call_manager.cpp 917 2014-08-13 17:55:11Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -72,7 +72,7 @@ bool CallManager::init( dialer::IDialer * dialer, const Config & cfg )
 
 void CallManager::thread_func()
 {
-    dummy_log( 0, MODULENAME, "thread_func: started" );
+    dummy_log_debug( MODULENAME, "thread_func: started" );
 
     bool should_run    = true;
     while( should_run )
@@ -94,10 +94,12 @@ void CallManager::thread_func()
             }
         }
 
-        THREAD_SLEEP_MS( cfg_.sleep_time_ms );
+        {
+            cond_.wait( mutex_cond_ );
+        }
     }
 
-    dummy_log( 0, MODULENAME, "thread_func: ended" );
+    dummy_log_debug( MODULENAME, "thread_func: ended" );
 }
 
 void CallManager::process_jobs()
@@ -134,7 +136,7 @@ bool CallManager::process_job( IJobPtr job )
 
     if( b == false)
     {
-        dummy_log( 0, MODULENAME, "failed to initiate call: job %p, party %s", job.get(), party.c_str() );
+        dummy_log_error( MODULENAME, "failed to initiate call: job %p, party %s", job.get(), party.c_str() );
 
         return false;
     }
@@ -148,20 +150,29 @@ bool CallManager::process_job( IJobPtr job )
     return true;
 }
 
+void CallManager::wakeup()
+{
+    // PRIVATE:
+
+    cond_.notify_one();     // wake-up the thread
+}
+
 bool CallManager::insert_job( IJobPtr job )
 {
     SCOPE_LOCK( mutex_ );
 
     if( std::find( jobs_.begin(), jobs_.end(), job ) != jobs_.end() )
     {
-        dummy_log( 0, MODULENAME, "insert_job: job %p already exists", job.get() );
+        dummy_log_error( MODULENAME, "insert_job: job %p already exists", job.get() );
 
         return false;
     }
 
     jobs_.push_back( job );
 
-    dummy_log( 0, MODULENAME, "insert_job: inserted job %p", job.get() );
+    dummy_log_debug( MODULENAME, "insert_job: inserted job %p", job.get() );
+
+    wakeup();
 
     return true;
 }
@@ -172,11 +183,11 @@ bool CallManager::remove_job( IJobPtr job )
     JobList::iterator it = std::find( jobs_.begin(), jobs_.end(), job );
     if( it == jobs_.end() )
     {
-        dummy_log( 0, MODULENAME, "ERROR: cannot remove job %p - it doesn't exist", job.get() );
+        dummy_log_error( MODULENAME, "ERROR: cannot remove job %p - it doesn't exist", job.get() );
         return false;
     }
 
-    dummy_log( 0, MODULENAME, "remove_job: removed job %p", job.get() );
+    dummy_log_debug( MODULENAME, "remove_job: removed job %p", job.get() );
 
     jobs_.erase( it );
 
@@ -197,13 +208,13 @@ void CallManager::on_registered( bool b )
 
     if( state_ != UNDEF )
     {
-        dummy_log( 0, MODULENAME, "on_register: ignored in state %d", state_ );
+        dummy_log_debug( MODULENAME, "on_register: ignored in state %d", state_ );
         return;
     }
 
     if( b == false )
     {
-        dummy_log( 0, MODULENAME, "on_register: ERROR: cannot register" );
+        dummy_log_debug( MODULENAME, "on_register: ERROR: cannot register" );
         return;
     }
 
@@ -216,13 +227,13 @@ void CallManager::on_ready()
 
     if( state_ == IDLE )
     {
-        dummy_log( 0, MODULENAME, "on_ready: ignored in state %s", "IDLE" );
+        dummy_log_debug( MODULENAME, "on_ready: ignored in state %s", "IDLE" );
         return;
     }
 
     if( state_ == BUSY )
     {
-        dummy_log( 0, MODULENAME, "on_ready: switching into state %s", "IDLE" );
+        dummy_log_debug( MODULENAME, "on_ready: switching into state %s", "IDLE" );
         state_  = IDLE;
     }
 
@@ -235,13 +246,13 @@ void CallManager::on_busy()
 
     if( state_ == BUSY )
     {
-        dummy_log( 0, MODULENAME, "on_busy: ignored in state %s", "BUSY" );
+        dummy_log_debug( MODULENAME, "on_busy: ignored in state %s", "BUSY" );
         return;
     }
 
     if( state_ == IDLE )
     {
-        dummy_log( 0, MODULENAME, "on_busy: switching into state %s", "BUSY" );
+        dummy_log_debug( MODULENAME, "on_busy: switching into state %s", "BUSY" );
         state_  = BUSY;
     }
 }

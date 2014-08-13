@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: namespace_calman.h 442 2014-04-24 17:07:49Z serge $
+// $Id: namespace_calman.h 419 2014-04-24 17:07:49Z serge $
 
 #ifndef NAMESPACE_CALMAN_H
 #define NAMESPACE_CALMAN_H

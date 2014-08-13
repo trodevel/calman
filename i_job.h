@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_job.h 506 2014-05-05 17:19:48Z serge $
+// $Id: i_job.h 483 2014-05-05 17:19:48Z serge $
 
 #ifndef CALMAN_I_JOB_H
 #define CALMAN_I_JOB_H

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 576 2014-05-22 17:34:20Z serge $
+// $Id: job.cpp 553 2014-05-22 17:34:20Z serge $
 
 #include "job.h"                    // self
 

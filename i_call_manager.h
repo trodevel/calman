@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 509 2014-05-05 17:30:47Z serge $
+// $Id: i_call_manager.h 486 2014-05-05 17:30:47Z serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H

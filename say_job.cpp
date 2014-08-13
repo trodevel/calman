@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: say_job.cpp 577 2014-05-22 17:35:28Z serge $
+// $Id: say_job.cpp 554 2014-05-22 17:35:28Z serge $
 
 #include "say_job.h"                    // self
 
