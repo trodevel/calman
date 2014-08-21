@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 911 2014-08-13 16:42:24Z serge $
+// $Id: call_manager.h 969 2014-08-20 17:51:45Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -31,6 +31,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "i_call_manager.h"                 // IJob
 #include "../dialer/i_dialer_callback.h"    // IDialerCallback
+#include "../threcon/i_controllable.h"      // IControllable
 
 #include "namespace_calman.h"       // NAMESPACE_CALMAN_START
 
@@ -43,7 +44,7 @@ NAMESPACE_CALMAN_START
 
 class Job;
 
-class CallManager: public virtual ICallManager, public virtual dialer::IDialerCallback
+class CallManager: public virtual ICallManager, public virtual dialer::IDialerCallback, public virtual threcon::IControllable
 {
 public:
     struct Config
@@ -61,13 +62,15 @@ public:
     // ICallManager interface
     bool insert_job( IJobPtr job );
     bool remove_job( IJobPtr job );
-    bool shutdown();
 
     // IDialerCallback interface
     void on_registered( bool b );
     void on_ready();
     void on_busy();
     void on_error( uint32 errorcode );
+
+    // interface threcon::IControllable
+    virtual bool shutdown();
 
 private:
     void process_jobs();
@@ -82,6 +85,8 @@ private:
     mutable boost::mutex        mutex_;
     mutable boost::mutex        mutex_cond_;
     mutable boost::condition    cond_;
+
+    bool                        must_stop_;
 
     Config                      cfg_;
 

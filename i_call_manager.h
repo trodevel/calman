@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 486 2014-05-05 17:30:47Z serge $
+// $Id: i_call_manager.h 969 2014-08-20 17:51:45Z serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H
@@ -48,8 +48,6 @@ public:
 
     virtual bool insert_job( IJobPtr job )                          = 0;
     virtual bool remove_job( IJobPtr job )                          = 0;
-
-    virtual bool shutdown()                                         = 0;
 };
 
 NAMESPACE_CALMAN_END

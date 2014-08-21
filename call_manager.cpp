@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 917 2014-08-13 17:55:11Z serge $
+// $Id: call_manager.cpp 969 2014-08-20 17:51:45Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -38,7 +38,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 NAMESPACE_CALMAN_START
 
 CallManager::CallManager():
-    state_( UNDEF ), dialer_( 0L ), curr_job_( 0L ), last_id_( 0 )
+    must_stop_( false ), state_( UNDEF ), dialer_( 0L ), curr_job_( 0L ), last_id_( 0 )
 {
 }
 CallManager::~CallManager()
@@ -74,11 +74,18 @@ void CallManager::thread_func()
 {
     dummy_log_debug( MODULENAME, "thread_func: started" );
 
-    bool should_run    = true;
-    while( should_run )
+    while( true )
     {
+
+        {
+            cond_.wait( mutex_cond_ );
+        }
+
         {
             SCOPE_LOCK( mutex_ );
+
+            if( must_stop_ )
+                break;
 
             switch( state_ )
             {
@@ -92,10 +99,6 @@ void CallManager::thread_func()
             default:
                 break;
             }
-        }
-
-        {
-            cond_.wait( mutex_cond_ );
         }
     }
 
@@ -197,6 +200,10 @@ bool CallManager::remove_job( IJobPtr job )
 bool CallManager::shutdown()
 {
     SCOPE_LOCK( mutex_ );
+
+    must_stop_  = true;
+
+    wakeup();
 
     return true;
 }
