@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: say_job.h 554 2014-05-22 17:35:28Z serge $
+// $Id: say_job.h 1023 2014-09-18 18:05:32Z serge $
 
 #ifndef CALMAN_SAY_JOB_H
 #define CALMAN_SAY_JOB_H
@@ -64,6 +64,8 @@ private:
 
     uint32                  start_delay_;
     bool                    is_job_done_;
+
+    std::string             filename_;
 };
 
 NAMESPACE_CALMAN_END

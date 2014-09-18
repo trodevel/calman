@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: say_job.cpp 554 2014-05-22 17:35:28Z serge $
+// $Id: say_job.cpp 1023 2014-09-18 18:05:32Z serge $
 
 #include "say_job.h"                    // self
 
@@ -71,14 +71,31 @@ void SayJob::on_call_duration( uint32 t )
         return;
     }
 
+
+    dummy_log( 0, MODULENAME, "DEBUG: playing '%s'", filename_.c_str() );
+
+    {
+        bool b = call_->set_input_file( filename_ );
+
+        if( b == false )
+        {
+            dummy_log( 0, MODULENAME, "ERROR: failed sending '%s'", text_.c_str() );
+            return;
+        }
+    }
+}
+
+// virtual functions for overloading
+void SayJob::on_custom_activate()
+{
     if( text_.empty() )
     {
         dummy_log( 0, MODULENAME, "WARNING: text is empty" );
         return;
     }
 
-    static const std::string temp_name = std::string( temp_path_ ).append( "/" ).append( "say_job_raw.wav" );
-    static const std::string sample = std::string( temp_path_ ).append( "/" ).append( "say_job.wav" );
+    std::string temp_name = std::string( temp_path_ ).append( "/" ).append( "say_job_raw.wav" );
+    filename_ = std::string( temp_path_ ).append( "/" ).append( "say_job.wav" );
 
     {
 
@@ -92,24 +109,7 @@ void SayJob::on_call_duration( uint32 t )
 
     gs_->save_state();
 
-    tune_wav( temp_name, sample );
-
-    dummy_log( 0, MODULENAME, "DEBUG: playing '%s'", sample.c_str() );
-
-    {
-        bool b = call_->set_input_file( sample );
-
-        if( b == false )
-        {
-            dummy_log( 0, MODULENAME, "ERROR: failed sending '%s'", text_.c_str() );
-            return;
-        }
-    }
-}
-
-// virtual functions for overloading
-void SayJob::on_custom_activate()
-{
+    tune_wav( temp_name, filename_ );
 }
 
 void SayJob::on_custom_finished()
