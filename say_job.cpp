@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: say_job.cpp 1023 2014-09-18 18:05:32Z serge $
+// $Id: say_job.cpp 1028 2014-09-19 17:01:24Z serge $
 
 #include "say_job.h"                    // self
 
@@ -61,25 +61,25 @@ void SayJob::on_call_duration( uint32 t )
 
     if( call_ == 0 )
     {
-        dummy_log( 0, MODULENAME, "ERROR: call is NULL" );
+        dummy_log_error( MODULENAME, "call is NULL" );
         return;
     }
 
     if( !call_->is_active() )
     {
-        dummy_log( 0, MODULENAME, "ERROR: call is not active" );
+        dummy_log_error( MODULENAME, "call is not active" );
         return;
     }
 
 
-    dummy_log( 0, MODULENAME, "DEBUG: playing '%s'", filename_.c_str() );
+    dummy_log_debug( MODULENAME, "playing '%s'", filename_.c_str() );
 
     {
         bool b = call_->set_input_file( filename_ );
 
         if( b == false )
         {
-            dummy_log( 0, MODULENAME, "ERROR: failed sending '%s'", text_.c_str() );
+            dummy_log_error( MODULENAME, "failed sending '%s'", text_.c_str() );
             return;
         }
     }
@@ -90,7 +90,7 @@ void SayJob::on_custom_activate()
 {
     if( text_.empty() )
     {
-        dummy_log( 0, MODULENAME, "WARNING: text is empty" );
+        dummy_log_warn( MODULENAME, "text is empty" );
         return;
     }
 
@@ -102,7 +102,7 @@ void SayJob::on_custom_activate()
         bool b = gs_->say( text_, temp_name );
         if( b == false )
         {
-            dummy_log( 0, MODULENAME, "ERROR: cannot generate text" );
+            dummy_log_error( MODULENAME, "cannot generate text" );
             return;
         }
     }
