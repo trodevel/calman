@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_job.h 483 2014-05-05 17:19:48Z serge $
+// $Id: i_job.h 1050 2014-09-22 17:59:12Z serge $
 
 #ifndef CALMAN_I_JOB_H
 #define CALMAN_I_JOB_H
@@ -29,7 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../dialer/call_i.h"       // CallIPtr
 #include "../utils/types.h"         // uint32
 
-#include "namespace_calman.h"       // NAMESPACE_CALMAN_START
+#include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
 
@@ -41,9 +41,9 @@ public:
 
     virtual std::string get_property( const std::string & name ) const  = 0;
 
-    virtual void on_preparing()                                 = 0;
+    virtual void on_processing_started()                        = 0;
     virtual void on_activate()                                  = 0;
-    virtual void on_call_ready( dialer::CallIPtr call )         = 0;
+    virtual void on_call_obj_available( dialer::CallIPtr call ) = 0;
     virtual void on_error( uint32 errorcode )                   = 0;
     virtual void on_finished()                                  = 0;
 };

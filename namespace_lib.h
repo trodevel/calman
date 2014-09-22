@@ -1,6 +1,6 @@
 /*
 
-Job callback.
+Call manager namespace.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -20,24 +20,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_job_callback.h 1050 2014-09-22 17:59:12Z serge $
+// $Id: namespace_lib.h 1049 2014-09-22 17:57:41Z serge $
 
-#ifndef CALMAN_I_JOB_CALLBACK_H
-#define CALMAN_I_JOB_CALLBACK_H
+#ifndef NAMESPACE_CALMAN_H
+#define NAMESPACE_CALMAN_H
 
-#include "namespace_lib.h"          // NAMESPACE_CALMAN_START
+#define NAMESPACE_CALMAN_START  namespace calman {
+#define NAMESPACE_CALMAN_END    }
 
-NAMESPACE_CALMAN_START
-
-class IJobCallback
-{
-public:
-    virtual ~IJobCallback() {};
-
-    virtual void on_activate() const                = 0;
-    virtual void on_finish() const                  = 0;
-};
-
-NAMESPACE_CALMAN_END
-
-#endif  // CALMAN_I_JOB_CALLBACK_H
+#endif  // NAMESPACE_CALMAN_H

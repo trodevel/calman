@@ -1,6 +1,6 @@
 /*
 
-Call manager namespace.
+Get WAV file duration.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -20,12 +20,20 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: namespace_calman.h 419 2014-04-24 17:07:49Z serge $
+// $Id: get_wav_duration.h 1051 2014-09-22 18:05:20Z serge $
 
-#ifndef NAMESPACE_CALMAN_H
-#define NAMESPACE_CALMAN_H
+#ifndef CALMAN_GET_WAV_DURATION_H
+#define CALMAN_GET_WAV_DURATION_H
 
-#define NAMESPACE_CALMAN_START  namespace calman {
-#define NAMESPACE_CALMAN_END    }
+#include <string>               // std::string
+#include "../utils/types.h"     // uint32
 
-#endif  // NAMESPACE_CALMAN_H
+#include "namespace_lib.h"      // NAMESPACE_CALMAN_START
+
+NAMESPACE_CALMAN_START
+
+uint32 get_wav_duration( const std::string & filename );
+
+NAMESPACE_CALMAN_END
+
+#endif  // CALMAN_GET_WAV_DURATION_H

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: say_job.cpp 1028 2014-09-19 17:01:24Z serge $
+// $Id: say_job.cpp 1052 2014-09-22 18:05:57Z serge $
 
 #include "say_job.h"                    // self
 
@@ -28,6 +28,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../gspeak/gspeak.h"           // GSpeak
 #include "../utils/tune_wav.h"          // tune_wav
+
+#include "get_wav_duration.h"           // get_wav_duration
 
 NAMESPACE_CALMAN_START
 
@@ -40,7 +42,8 @@ SayJob::SayJob(
         const std::string   & temp_path,
         uint32              start_delay ):
         Job( party ), gs_( gs ), text_( text ), temp_path_( temp_path ), start_delay_( start_delay ),
-        is_job_done_( false )
+        is_job_done_( false ),
+        speech_duration_( 0 )
 {
 }
 SayJob::~SayJob()
@@ -86,7 +89,7 @@ void SayJob::on_call_duration( uint32 t )
 }
 
 // virtual functions for overloading
-void SayJob::on_custom_activate()
+void SayJob::on_custom_processing_started()
 {
     if( text_.empty() )
     {
@@ -103,6 +106,9 @@ void SayJob::on_custom_activate()
         if( b == false )
         {
             dummy_log_error( MODULENAME, "cannot generate text" );
+
+            is_job_done_    = true;     // prevent from further processing
+
             return;
         }
     }
@@ -110,8 +116,21 @@ void SayJob::on_custom_activate()
     gs_->save_state();
 
     tune_wav( temp_name, filename_ );
-}
 
+    speech_duration_    = get_wav_duration( filename_ );
+
+    if( speech_duration_ == 0 )
+    {
+        dummy_log_error( MODULENAME, "speech duration is 0" );
+
+        is_job_done_    = true;     // prevent from further processing
+
+        return;
+    }
+}
+void SayJob::on_custom_activate()
+{
+}
 void SayJob::on_custom_finished()
 {
 }

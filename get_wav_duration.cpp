@@ -1,6 +1,6 @@
 /*
 
-Call manager interface.
+Get WAV file duration.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -20,36 +20,26 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 1050 2014-09-22 17:59:12Z serge $
+// $Id: get_wav_duration.cpp 1048 2014-09-22 17:56:18Z serge $
 
-#ifndef I_CALMAN_H
-#define I_CALMAN_H
+#include "get_wav_duration.h"   // self
 
-#include <string>                   // std::string
-#include "../utils/types.h"         // uint32
-
-#include "namespace_lib.h"          // NAMESPACE_CALMAN_START
-#include "i_job.h"                  // IJob
+#include "../sndfile_cpp/sndfile.hpp"   // SndFile
 
 NAMESPACE_CALMAN_START
 
-class ICallManager
+uint32 get_wav_duration( const std::string & filename )
 {
-public:
-    enum state_e
-    {
-        UNDEF   = 0,
-        IDLE,
-        BUSY
-    };
+    sndfile::SndFile file;
 
-public:
-    virtual ~ICallManager() {};
+    if( file.open( filename.c_str() ) == false )
+        return 0;
 
-    virtual bool insert_job( IJobPtr job )                          = 0;
-    virtual bool remove_job( IJobPtr job )                          = 0;
-};
+    uint32 res = static_cast<uint32>( file.get_duration() );
+
+    file.close();
+
+    return res;
+}
 
 NAMESPACE_CALMAN_END
-
-#endif  // I_CALMAN_H

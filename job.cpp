@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 553 2014-05-22 17:34:20Z serge $
+// $Id: job.cpp 1045 2014-09-22 17:42:37Z serge $
 
 #include "job.h"                    // self
 
@@ -54,18 +54,20 @@ std::string Job::get_property( const std::string & name ) const
     return empty;
 }
 
-void Job::on_preparing()
+void Job::on_processing_started()
 {
     SCOPE_LOCK( mutex_ );
 
     if( state_ == IDLE )
     {
-        dummy_log( 0, MODULENAME, "on_preparing: switched to PREPARING" );
+        dummy_log( 0, MODULENAME, "on_processing_started: switched to PREPARING" );
         state_ = PREPARING;
+
+        on_custom_processing_started();
     }
     else
     {
-        dummy_log( 0, MODULENAME, "on_preparing: ignored in state %u", state_ );
+        dummy_log( 0, MODULENAME, "on_processing_started: ignored in state %u", state_ );
     }
 }
 
@@ -93,18 +95,18 @@ void Job::on_activate__()
         dummy_log( 0, MODULENAME, "on_activate: ignored in state %u", state_ );
     }
 }
-void Job::on_call_ready( dialer::CallIPtr call )
+void Job::on_call_obj_available( dialer::CallIPtr call )
 {
     SCOPE_LOCK( mutex_ );
 
     if( state_ == PREPARING )
     {
         call_ = call;
-        dummy_log( 0, MODULENAME, "on_call_ready: got CallI" );
+        dummy_log( 0, MODULENAME, "on_call_obj_available: got CallI" );
     }
     else
     {
-        dummy_log( 0, MODULENAME, "on_call_ready: ignored in state %u", state_ );
+        dummy_log( 0, MODULENAME, "on_call_obj_available: ignored in state %u", state_ );
     }
 }
 void Job::on_error( uint32 errorcode )
@@ -163,6 +165,10 @@ void Job::on_call_duration( uint32 t )
 }
 
 // virtual functions for overloading
+void Job::on_custom_processing_started()
+{
+}
+
 void Job::on_custom_activate()
 {
 }

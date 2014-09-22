@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 969 2014-08-20 17:51:45Z serge $
+// $Id: call_manager.h 1050 2014-09-22 17:59:12Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -33,7 +33,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../dialer/i_dialer_callback.h"    // IDialerCallback
 #include "../threcon/i_controllable.h"      // IControllable
 
-#include "namespace_calman.h"       // NAMESPACE_CALMAN_START
+#include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
 namespace dialer
 {

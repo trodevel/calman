@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 969 2014-08-20 17:51:45Z serge $
+// $Id: call_manager.cpp 1044 2014-09-22 17:40:31Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -129,7 +129,7 @@ bool CallManager::process_job( IJobPtr job )
 
     ASSERT( job );  // job must be empty
 
-    job->on_preparing();
+    job->on_processing_started();
 
     std::string party = job->get_property( "party" );
 
@@ -146,7 +146,7 @@ bool CallManager::process_job( IJobPtr job )
 
     boost::shared_ptr< dialer::CallI > call = dialer_->get_call();
 
-    job->on_call_ready( call );
+    job->on_call_obj_available( call );
 
     call->register_callback( boost::dynamic_pointer_cast< dialer::ICallCallback, IJob>( job ) );
 

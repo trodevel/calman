@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 553 2014-05-22 17:34:20Z serge $
+// $Id: job.h 1045 2014-09-22 17:42:37Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -56,9 +56,9 @@ public:
     // IJob interface
     virtual std::string get_property( const std::string & name ) const;
 
-    void on_preparing();
+    void on_processing_started();
     void on_activate();
-    void on_call_ready( dialer::CallIPtr call );
+    void on_call_obj_available( dialer::CallIPtr call );
     void on_error( uint32 errorcode );
     void on_finished();
 
@@ -71,6 +71,7 @@ public:
 
 protected:
     // virtual functions for overloading
+    virtual void on_custom_processing_started();
     virtual void on_custom_activate();
     virtual void on_custom_finished();
 
