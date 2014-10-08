@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 1045 2014-09-22 17:42:37Z serge $
+// $Id: job.cpp 1102 2014-10-07 18:02:30Z serge $
 
 #include "job.h"                    // self
 
@@ -60,14 +60,14 @@ void Job::on_processing_started()
 
     if( state_ == IDLE )
     {
-        dummy_log( 0, MODULENAME, "on_processing_started: switched to PREPARING" );
+        dummy_log_debug( MODULENAME, "on_processing_started: switched to PREPARING" );
         state_ = PREPARING;
 
         on_custom_processing_started();
     }
     else
     {
-        dummy_log( 0, MODULENAME, "on_processing_started: ignored in state %u", state_ );
+        dummy_log_warn( MODULENAME, "on_processing_started: ignored in state %u", state_ );
     }
 }
 
@@ -86,13 +86,13 @@ void Job::on_activate__()
     if( state_ == PREPARING )
     {
         state_ = ACTIVE;
-        dummy_log( 0, MODULENAME, "on_activate: switched to ACTIVE" );
+        dummy_log_debug( MODULENAME, "on_activate: switched to ACTIVE" );
 
         on_custom_activate();
     }
     else
     {
-        dummy_log( 0, MODULENAME, "on_activate: ignored in state %u", state_ );
+        dummy_log_warn( MODULENAME, "on_activate: ignored in state %u", state_ );
     }
 }
 void Job::on_call_obj_available( dialer::CallIPtr call )
@@ -102,11 +102,11 @@ void Job::on_call_obj_available( dialer::CallIPtr call )
     if( state_ == PREPARING )
     {
         call_ = call;
-        dummy_log( 0, MODULENAME, "on_call_obj_available: got CallI" );
+        dummy_log_debug( MODULENAME, "on_call_obj_available: got CallI" );
     }
     else
     {
-        dummy_log( 0, MODULENAME, "on_call_obj_available: ignored in state %u", state_ );
+        dummy_log_warn( MODULENAME, "on_call_obj_available: ignored in state %u", state_ );
     }
 }
 void Job::on_error( uint32 errorcode )
@@ -117,11 +117,11 @@ void Job::on_error( uint32 errorcode )
     {
         state_ = DONE;
 
-        dummy_log( 0, MODULENAME, "on_error: switched to DONE" );
+        dummy_log_debug( MODULENAME, "on_error: switched to DONE" );
     }
     else
     {
-        dummy_log( 0, MODULENAME, "on_error: ignored in state %u", state_ );
+        dummy_log_warn( MODULENAME, "on_error: ignored in state %u", state_ );
     }
 }
 void Job::on_finished()
@@ -132,13 +132,13 @@ void Job::on_finished()
     {
         state_ = DONE;
 
-        dummy_log( 0, MODULENAME, "on_finished: switched to DONE" );
+        dummy_log_debug( MODULENAME, "on_finished: switched to DONE" );
 
         on_custom_finished();
     }
     else
     {
-        dummy_log( 0, MODULENAME, "on_finished: ignored in state %u", state_ );
+        dummy_log_warn( MODULENAME, "on_finished: ignored in state %u", state_ );
     }
 }
 
