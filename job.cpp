@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 1102 2014-10-07 18:02:30Z serge $
+// $Id: job.cpp 1141 2014-10-13 17:24:49Z serge $
 
 #include "job.h"                    // self
 
@@ -122,6 +122,21 @@ void Job::on_error( uint32 errorcode )
     else
     {
         dummy_log_warn( MODULENAME, "on_error: ignored in state %u", state_ );
+    }
+}
+void Job::on_fatal_error( uint32 errorcode )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ == PREPARING || state_ == ACTIVE || state_ == IDLE )
+    {
+        state_ = DONE;
+
+        dummy_log_debug( MODULENAME, "on_fatal_error: switched to DONE" );
+    }
+    else
+    {
+        dummy_log_warn( MODULENAME, "on_fatal_error: ignored in state %u", state_ );
     }
 }
 void Job::on_finished()

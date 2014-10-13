@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 1045 2014-09-22 17:42:37Z serge $
+// $Id: job.h 1141 2014-10-13 17:24:49Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -63,6 +63,7 @@ public:
     void on_finished();
 
     // dialer::ICallCallback
+    void on_fatal_error( uint32 errorcode );
     void on_call_end( uint32 errorcode );
     void on_dial();
     void on_ring();
