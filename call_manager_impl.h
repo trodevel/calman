@@ -20,17 +20,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1172 2014-10-20 17:30:51Z serge $
+// $Id: call_manager_impl.h 1172 2014-10-20 17:30:51Z serge $
 
-#ifndef CALL_MANAGER_H
-#define CALL_MANAGER_H
+#ifndef CALL_MANAGER_IMPL_H
+#define CALL_MANAGER_IMPL_H
 
 #include <list>
 #include <boost/thread.hpp>             // boost::mutex
 #include <boost/thread/condition.hpp>   // boost::condition
 
-#include "config.h"                         // Config
 #include "i_call_manager.h"                 // IJob
+#include "config.h"                         // Config
 #include "../dialer/i_dialer_callback.h"    // IDialerCallback
 #include "../threcon/i_controllable.h"      // IControllable
 
@@ -41,21 +41,15 @@ namespace dialer
 class IDialer;
 }
 
-namespace asyncp
-{
-class AsyncProxy;
-}
-
 NAMESPACE_CALMAN_START
 
 class Job;
-class CallManagerImpl;
 
-class CallManager: public virtual ICallManager, public virtual dialer::IDialerCallback, public virtual threcon::IControllable
+class CallManagerImpl
 {
 public:
-    CallManager();
-    ~CallManager();
+    CallManagerImpl();
+    ~CallManagerImpl();
 
     bool init( dialer::IDialer * dialer, const Config & cfg );
     void thread_func();
@@ -72,7 +66,12 @@ public:
     void on_error( uint32 errorcode );
 
     // interface threcon::IControllable
-    virtual bool shutdown();
+    bool shutdown();
+
+private:
+    void process_jobs();
+    void process_current_job();
+    void wakeup();
 
 private:
 
@@ -80,11 +79,24 @@ private:
 
 private:
     mutable boost::mutex        mutex_;
+    mutable boost::mutex        mutex_cond_;
+    mutable boost::condition    cond_;
 
-    asyncp::AsyncProxy          * proxy_;
-    CallManagerImpl             * impl_;
+    bool                        must_stop_;
+
+    Config                      cfg_;
+
+    ICallManager::state_e       state_;
+
+    JobList                     jobs_;
+
+    dialer::IDialer             * dialer_;
+
+    IJobPtr                     curr_job_;
+
+    uint32                      last_id_;
 };
 
 NAMESPACE_CALMAN_END
 
-#endif  // CALL_MANAGER_H
+#endif  // CALL_MANAGER_IMPL_H

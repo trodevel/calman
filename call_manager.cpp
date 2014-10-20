@@ -20,194 +20,79 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1160 2014-10-16 20:04:08Z serge $
+// $Id: call_manager.cpp 1172 2014-10-20 17:30:51Z serge $
 
 #include "call_manager.h"                 // self
 
-#include <boost/thread.hpp>             // boost::this_thread
-
+#include "../asyncp/async_proxy.h"      // AsyncProxy
+#include "../asyncp/event.h"            // new_event
 #include "../utils/assert.h"            // ASSERT
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
-#include "../dialer/i_dialer.h"         // IDialer
 
-#include "job.h"                        // Job
+#include "call_manager_impl.h"          // CallManagerImpl
 
 #define MODULENAME      "CallManager"
 
 NAMESPACE_CALMAN_START
 
-CallManager::CallManager():
-    must_stop_( false ), state_( UNDEF ), dialer_( 0L ), curr_job_( 0L ), last_id_( 0 )
+CallManager::CallManager()
 {
+    proxy_  = new asyncp::AsyncProxy;
+
+    {
+        asyncp::AsyncProxy::Config cfg;
+        cfg.sleep_time_ms   = 1;
+
+        ASSERT( proxy_->init( cfg ) );
+    }
+
+    impl_   = new CallManagerImpl;
 }
+
 CallManager::~CallManager()
 {
-    SCOPE_LOCK( mutex_ );
-
-
-    jobs_.clear();
-
-    if( curr_job_ )
+    if( impl_ )
     {
-        curr_job_   = 0L;
+        delete impl_;
+        impl_   = nullptr;
     }
 }
 
 bool CallManager::init( dialer::IDialer * dialer, const Config & cfg )
 {
-    if( dialer == 0L )
-        return false;
-
     SCOPE_LOCK( mutex_ );
 
-    if( dialer_ != 0L )
-        return false;
-
-    dialer_ = dialer;
-    cfg_    = cfg;
-
-    return true;
+    return impl_->init( dialer, cfg );
 }
 
 void CallManager::thread_func()
 {
     dummy_log_debug( MODULENAME, "thread_func: started" );
 
-    while( true )
-    {
-
-        {
-            cond_.wait( mutex_cond_ );
-        }
-
-        {
-            SCOPE_LOCK( mutex_ );
-
-            if( must_stop_ )
-                break;
-
-            switch( state_ )
-            {
-            case IDLE:
-                process_jobs();
-                break;
-
-            case BUSY:
-                break;
-
-            default:
-                break;
-            }
-        }
-    }
+    impl_->thread_func();
 
     dummy_log_debug( MODULENAME, "thread_func: ended" );
-}
-
-void CallManager::process_jobs()
-{
-    // private: no MUTEX lock needed
-
-    if( jobs_.empty() )
-        return;
-
-    ASSERT( curr_job_ == 0L );  // curr_job_ must be empty
-
-    curr_job_ = jobs_.front();
-
-    jobs_.pop_front();
-
-    process_job( curr_job_ );
-
-    curr_job_.reset();
-}
-
-bool CallManager::process_job( IJobPtr job )
-{
-    // private: no MUTEX lock needed
-
-    ASSERT( job );  // job must be empty
-
-    job->on_processing_started();
-
-    std::string party = job->get_property( "party" );
-
-    uint32 status = 0;
-
-    bool b = dialer_->initiate_call( party, status );
-
-    if( b == false)
-    {
-        dummy_log_error( MODULENAME, "failed to initiate call: job %p, party %s", job.get(), party.c_str() );
-
-        return false;
-    }
-
-    boost::shared_ptr< dialer::CallI > call = dialer_->get_call();
-
-    job->on_call_obj_available( call );
-
-    call->register_callback( boost::dynamic_pointer_cast< dialer::ICallCallback, IJob>( job ) );
-
-    state_  = IDLE;
-
-    return true;
-}
-
-void CallManager::wakeup()
-{
-    // PRIVATE:
-
-    cond_.notify_one();     // wake-up the thread
 }
 
 bool CallManager::insert_job( IJobPtr job )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( std::find( jobs_.begin(), jobs_.end(), job ) != jobs_.end() )
-    {
-        dummy_log_error( MODULENAME, "insert_job: job %p already exists", job.get() );
-
-        return false;
-    }
-
-    jobs_.push_back( job );
-
-    dummy_log_debug( MODULENAME, "insert_job: inserted job %p", job.get() );
-
-    wakeup();
-
-    return true;
+    return impl_->insert_job( job );
 }
 bool CallManager::remove_job( IJobPtr job )
 {
     SCOPE_LOCK( mutex_ );
 
-    JobList::iterator it = std::find( jobs_.begin(), jobs_.end(), job );
-    if( it == jobs_.end() )
-    {
-        dummy_log_error( MODULENAME, "ERROR: cannot remove job %p - it doesn't exist", job.get() );
-        return false;
-    }
-
-    dummy_log_debug( MODULENAME, "remove_job: removed job %p", job.get() );
-
-    jobs_.erase( it );
-
-    return true;
+    return impl_->remove_job( job );
 }
 
 bool CallManager::shutdown()
 {
     SCOPE_LOCK( mutex_ );
 
-    must_stop_  = true;
-
-    wakeup();
-
-    return true;
+    return impl_->shutdown();
 }
 
 // IDialerCallback interface
@@ -215,59 +100,31 @@ void CallManager::on_registered( bool b )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != UNDEF )
-    {
-        dummy_log_debug( MODULENAME, "on_register: ignored in state %d", state_ );
-        return;
-    }
-
-    if( b == false )
-    {
-        dummy_log_debug( MODULENAME, "on_register: ERROR: cannot register" );
-        return;
-    }
-
-    state_  = IDLE;
+    impl_->on_registered( b );
 }
+void CallManager::on_call_initiate_response( bool is_initiated, uint32 status )
+{
+    SCOPE_LOCK( mutex_ );
 
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_initiate_response, impl_, is_initiated, status ) ) ) );
+}
 void CallManager::on_ready()
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == IDLE )
-    {
-        dummy_log_debug( MODULENAME, "on_ready: ignored in state %s", "IDLE" );
-        return;
-    }
-
-    if( state_ == BUSY )
-    {
-        dummy_log_debug( MODULENAME, "on_ready: switching into state %s", "IDLE" );
-        state_  = IDLE;
-    }
-
-    if( jobs_.empty() )
-        return; // no jobs to process, exit
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_ready, impl_ ) ) ) );
 }
 void CallManager::on_busy()
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == BUSY )
-    {
-        dummy_log_debug( MODULENAME, "on_busy: ignored in state %s", "BUSY" );
-        return;
-    }
-
-    if( state_ == IDLE )
-    {
-        dummy_log_debug( MODULENAME, "on_busy: switching into state %s", "BUSY" );
-        state_  = BUSY;
-    }
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_busy, impl_ ) ) ) );
 }
 void CallManager::on_error( uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
+
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_error, impl_, errorcode ) ) ) );
 }
 
 NAMESPACE_CALMAN_END

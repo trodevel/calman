@@ -1,6 +1,6 @@
 /*
 
-Call manager interface.
+Call manager.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -20,37 +20,21 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 1172 2014-10-20 17:30:51Z serge $
+// $Id: config.h 1172 2014-10-20 17:30:51Z serge $
 
-#ifndef I_CALMAN_H
-#define I_CALMAN_H
+#ifndef CALMAN_CONFIG_H
+#define CALMAN_CONFIG_H
 
-#include <string>                   // std::string
 #include "../utils/types.h"         // uint32
-
-#include "namespace_lib.h"          // NAMESPACE_CALMAN_START
-#include "i_job.h"                  // IJob
+#include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
 
-class ICallManager
+struct Config
 {
-public:
-    enum state_e
-    {
-        UNDEF   = 0,
-        IDLE,
-        WAITING_DIALER,
-        BUSY
-    };
-
-public:
-    virtual ~ICallManager() {};
-
-    virtual bool insert_job( IJobPtr job )                          = 0;
-    virtual bool remove_job( IJobPtr job )                          = 0;
+    uint32  sleep_time_ms;  // try 3 ms
 };
 
 NAMESPACE_CALMAN_END
 
-#endif  // I_CALMAN_H
+#endif  // CALMAN_CONFIG_H

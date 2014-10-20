@@ -78,7 +78,7 @@ EXE=
 
 #vpath %.cpp .
 
-SRCC = job.cpp call_manager.cpp
+SRCC = job.cpp call_manager.cpp call_manager_impl.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
 
 all: static
