@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1172 2014-10-20 17:30:51Z serge $
+// $Id: call_manager.cpp 1187 2014-10-22 18:16:17Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -43,6 +43,7 @@ CallManager::CallManager()
     {
         asyncp::AsyncProxy::Config cfg;
         cfg.sleep_time_ms   = 1;
+        cfg.name            = MODULENAME;
 
         ASSERT( proxy_->init( cfg ) );
     }
@@ -70,7 +71,7 @@ void CallManager::thread_func()
 {
     dummy_log_debug( MODULENAME, "thread_func: started" );
 
-    impl_->thread_func();
+    proxy_->thread_func();
 
     dummy_log_debug( MODULENAME, "thread_func: ended" );
 }
@@ -79,20 +80,28 @@ bool CallManager::insert_job( IJobPtr job )
 {
     SCOPE_LOCK( mutex_ );
 
-    return impl_->insert_job( job );
+    bool res = impl_->insert_job( job );
+
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::wakeup, impl_ ) ) ) );
+
+    return res;
 }
 bool CallManager::remove_job( IJobPtr job )
 {
     SCOPE_LOCK( mutex_ );
 
-    return impl_->remove_job( job );
+    bool res = impl_->remove_job( job );
+
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::wakeup, impl_ ) ) ) );
+
+    return res;
 }
 
 bool CallManager::shutdown()
 {
     SCOPE_LOCK( mutex_ );
 
-    return impl_->shutdown();
+    return proxy_->shutdown();
 }
 
 // IDialerCallback interface
@@ -102,11 +111,11 @@ void CallManager::on_registered( bool b )
 
     impl_->on_registered( b );
 }
-void CallManager::on_call_initiate_response( bool is_initiated, uint32 status )
+void CallManager::on_call_initiate_response( bool is_initiated, uint32 status, dialer::CallIPtr call )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_initiate_response, impl_, is_initiated, status ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_initiate_response, impl_, is_initiated, status, call ) ) ) );
 }
 void CallManager::on_ready()
 {

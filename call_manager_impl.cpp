@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1172 2014-10-20 17:30:51Z serge $
+// $Id: call_manager_impl.cpp 1187 2014-10-22 18:16:17Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -70,40 +70,29 @@ bool CallManagerImpl::init( dialer::IDialer * dialer, const Config & cfg )
     return true;
 }
 
-void CallManagerImpl::thread_func()
+void CallManagerImpl::wakeup()
 {
-    dummy_log_debug( MODULENAME, "thread_func: started" );
+    dummy_log_trace( MODULENAME, "wakeup" );
 
-    while( true )
+    SCOPE_LOCK( mutex_ );
+
+    if( must_stop_ )
+        return;
+
+    switch( state_ )
     {
+    case ICallManager::IDLE:
+        process_jobs();
+        break;
 
-        {
-            cond_.wait( mutex_cond_ );
-        }
+    case ICallManager::BUSY:
+    case ICallManager::WAITING_DIALER:
+        break;
 
-        {
-            SCOPE_LOCK( mutex_ );
-
-            if( must_stop_ )
-                break;
-
-            switch( state_ )
-            {
-            case ICallManager::IDLE:
-                process_jobs();
-                break;
-
-            case ICallManager::BUSY:
-            case ICallManager::WAITING_DIALER:
-                break;
-
-            default:
-                break;
-            }
-        }
+    default:
+        break;
     }
 
-    dummy_log_debug( MODULENAME, "thread_func: ended" );
 }
 
 void CallManagerImpl::process_jobs()
@@ -141,13 +130,6 @@ void CallManagerImpl::process_current_job()
     state_  = ICallManager::WAITING_DIALER;
 }
 
-void CallManagerImpl::wakeup()
-{
-    // PRIVATE:
-
-    cond_.notify_one();     // wake-up the thread
-}
-
 bool CallManagerImpl::insert_job( IJobPtr job )
 {
     SCOPE_LOCK( mutex_ );
@@ -162,8 +144,6 @@ bool CallManagerImpl::insert_job( IJobPtr job )
     jobs_.push_back( job );
 
     dummy_log_debug( MODULENAME, "insert_job: inserted job %p", job.get() );
-
-    wakeup();
 
     return true;
 }
@@ -191,8 +171,6 @@ bool CallManagerImpl::shutdown()
 
     must_stop_  = true;
 
-    wakeup();
-
     return true;
 }
 
@@ -216,7 +194,7 @@ void CallManagerImpl::on_registered( bool b )
     state_  = ICallManager::IDLE;
 }
 
-void CallManagerImpl::on_call_initiate_response( bool is_initiated, uint32 status )
+void CallManagerImpl::on_call_initiate_response( bool is_initiated, uint32 status, dialer::CallIPtr call )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -231,9 +209,9 @@ void CallManagerImpl::on_call_initiate_response( bool is_initiated, uint32 statu
         dummy_log_error( MODULENAME, "failed to initiate call: job %p, party %s", curr_job_.get(), curr_job_->get_property( "party" ).c_str() );
 
         state_  = ICallManager::IDLE;
-    }
 
-    boost::shared_ptr< dialer::CallI > call = dialer_->get_call();
+        return;
+    }
 
     curr_job_->on_call_obj_available( call );
 

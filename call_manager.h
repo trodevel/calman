@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1172 2014-10-20 17:30:51Z serge $
+// $Id: call_manager.h 1187 2014-10-22 18:16:17Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -66,7 +66,7 @@ public:
 
     // IDialerCallback interface
     void on_registered( bool b );
-    void on_call_initiate_response( bool is_initiated, uint32 status );
+    void on_call_initiate_response( bool is_initiated, uint32 status, dialer::CallIPtr call );
     void on_ready();
     void on_busy();
     void on_error( uint32 errorcode );
