@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1187 2014-10-22 18:16:17Z serge $
+// $Id: call_manager_impl.cpp 1188 2014-10-23 17:11:36Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -36,6 +36,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #define MODULENAME      "CallManagerImpl"
 
 NAMESPACE_CALMAN_START
+
+const char* to_cstr( ICallManager::state_e s )
+{
+    static const char *vals[]=
+    {
+            "UNDEF", "IDLE", "WAITING_DIALER", "BUSY"
+    };
+
+    if( s < ICallManager::UNDEF || s > ICallManager::BUSY )
+        return vals[0];
+
+    return vals[ (int) s ];
+}
 
 CallManagerImpl::CallManagerImpl():
     must_stop_( false ), state_( ICallManager::UNDEF ), dialer_( 0L ), curr_job_( 0L ), last_id_( 0 )
@@ -109,8 +122,6 @@ void CallManagerImpl::process_jobs()
     jobs_.pop_front();
 
     process_current_job();
-
-    curr_job_.reset();
 }
 
 void CallManagerImpl::process_current_job()
@@ -119,7 +130,7 @@ void CallManagerImpl::process_current_job()
 
     ASSERT( state_ == ICallManager::IDLE ); // just paranoid check
 
-    ASSERT( curr_job_ );  // job must be empty
+    ASSERT( curr_job_ );  // job must not be empty
 
     curr_job_->on_processing_started();
 
@@ -181,7 +192,7 @@ void CallManagerImpl::on_registered( bool b )
 
     if( state_ != ICallManager::UNDEF )
     {
-        dummy_log_debug( MODULENAME, "on_register: ignored in state %d", state_ );
+        dummy_log_debug( MODULENAME, "on_register: ignored in state %d", to_cstr( state_ ) );
         return;
     }
 
@@ -200,15 +211,19 @@ void CallManagerImpl::on_call_initiate_response( bool is_initiated, uint32 statu
 
     if( state_ != ICallManager::WAITING_DIALER )
     {
-        dummy_log_warn( MODULENAME, "on_call_initiate_response: ignored in state %u", state_ );
+        dummy_log_warn( MODULENAME, "on_call_initiate_response: ignored in state %s", to_cstr( state_ ) );
         return;
     }
+
+    ASSERT( curr_job_ );    // curr job must not be empty
 
     if( is_initiated == false )
     {
         dummy_log_error( MODULENAME, "failed to initiate call: job %p, party %s", curr_job_.get(), curr_job_->get_property( "party" ).c_str() );
 
         state_  = ICallManager::IDLE;
+
+        curr_job_.reset();  // as call failed, curr job can be deleted
 
         return;
     }
@@ -223,9 +238,9 @@ void CallManagerImpl::on_ready()
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == ICallManager::IDLE )
+    if( state_ != ICallManager::BUSY )
     {
-        dummy_log_debug( MODULENAME, "on_ready: ignored in state %s", "IDLE" );
+        dummy_log_debug( MODULENAME, "on_ready: ignored in state %s", to_cstr( state_ ) );
         return;
     }
 
@@ -233,6 +248,12 @@ void CallManagerImpl::on_ready()
     {
         dummy_log_debug( MODULENAME, "on_ready: switching into state %s", "IDLE" );
         state_  = ICallManager::IDLE;
+
+        ASSERT( curr_job_ );    // curr job must not be empty
+
+        curr_job_->on_finished();
+
+        curr_job_.reset();      // as call finished, curr job can be deleted
     }
 
     if( jobs_.empty() )
@@ -242,9 +263,9 @@ void CallManagerImpl::on_busy()
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == ICallManager::BUSY )
+    if( state_ != ICallManager::IDLE )
     {
-        dummy_log_debug( MODULENAME, "on_busy: ignored in state %s", "BUSY" );
+        dummy_log_debug( MODULENAME, "on_busy: ignored in state %s", to_cstr( state_ ) );
         return;
     }
 
@@ -257,6 +278,28 @@ void CallManagerImpl::on_busy()
 void CallManagerImpl::on_error( uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
+
+    if( state_ != ICallManager::BUSY )
+    {
+        dummy_log_debug( MODULENAME, "on_error: ignored in state %s", to_cstr( state_ ) );
+
+        ASSERT( curr_job_ == nullptr );    // curr job must be empty
+
+        return;
+    }
+
+    if( state_ == ICallManager::BUSY )
+    {
+        dummy_log_debug( MODULENAME, "on_error: call failed, switching into state %s", "IDLE" );
+
+        ASSERT( curr_job_ );    // curr job must not be empty
+
+        curr_job_->on_error( errorcode );
+
+        curr_job_.reset();      // as call finished, curr job can be deleted
+
+        state_  = ICallManager::IDLE;
+    }
 }
 
 NAMESPACE_CALMAN_END
