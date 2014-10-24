@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1188 2014-10-23 17:11:36Z serge $
+// $Id: call_manager_impl.cpp 1206 2014-10-24 20:09:39Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -33,7 +33,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "job.h"                        // Job
 
-#define MODULENAME      "CallManagerImpl"
+#define MODULENAME      "CallManager"
 
 NAMESPACE_CALMAN_START
 

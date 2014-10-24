@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 1141 2014-10-13 17:24:49Z serge $
+// $Id: job.h 1202 2014-10-24 20:00:23Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -31,7 +31,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "i_job.h"                  // IJob
 #include "../dialer/i_call_callback.h"  // ICallCallback
 
-
+namespace asyncp
+{
+class IAsyncProxy;
+}
 
 NAMESPACE_CALMAN_START
 
@@ -50,7 +53,10 @@ public:
     };
 
 public:
-    Job( const std::string & party );
+    Job(
+        const std::string       & party,
+        asyncp::IAsyncProxy     * proxy );
+
     ~Job();
 
     // IJob interface
@@ -77,9 +83,23 @@ protected:
     virtual void on_custom_finished();
 
 private:
+    void on_activate___();
+
+private:
+    // IJob interface
+    void on_processing_started__();
     void on_activate__();
+    void on_call_obj_available__( dialer::CallIPtr call );
+    void on_error__( uint32 errorcode );
+    void on_finished__();
+
+    // dialer::ICallCallback
+    void on_fatal_error__( uint32 errorcode );
+    void on_connect__();
 
 protected:
+
+    asyncp::IAsyncProxy     * proxy_;
 
     dialer::CallIPtr        call_;
 
@@ -89,7 +109,6 @@ private:
     mutable boost::mutex    mutex_;
 
     status_e                state_;
-
 };
 
 NAMESPACE_CALMAN_END

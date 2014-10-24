@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 1141 2014-10-13 17:24:49Z serge $
+// $Id: job.cpp 1203 2014-10-24 20:01:04Z serge $
 
 #include "job.h"                    // self
 
@@ -28,13 +28,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
+#include "../asyncp/async_proxy.h"      // AsyncProxy
+#include "../asyncp/event.h"            // new_event
 
 NAMESPACE_CALMAN_START
 
 #define MODULENAME      "Job"
 
-Job::Job( const std::string & party ):
-        call_( 0L ), party_( party ), state_( IDLE )
+Job::Job(
+        const std::string       & party,
+        asyncp::IAsyncProxy     * proxy ):
+        proxy_( proxy ), call_( 0L ), party_( party ), state_( IDLE )
 {
 }
 Job::~Job()
@@ -56,6 +60,10 @@ std::string Job::get_property( const std::string & name ) const
 
 void Job::on_processing_started()
 {
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_processing_started__, this ) ) ) );
+}
+void Job::on_processing_started__()
+{
     SCOPE_LOCK( mutex_ );
 
     if( state_ == IDLE )
@@ -74,14 +82,20 @@ void Job::on_processing_started()
 /**
  * @brief on_activate() is called when the connection is established
  */
+
 void Job::on_activate()
+{
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_activate__, this ) ) ) );
+}
+
+void Job::on_activate__()
 {
     SCOPE_LOCK( mutex_ );
 
     on_activate__();
 }
 
-void Job::on_activate__()
+void Job::on_activate___()
 {
     if( state_ == PREPARING )
     {
@@ -97,6 +111,10 @@ void Job::on_activate__()
 }
 void Job::on_call_obj_available( dialer::CallIPtr call )
 {
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_call_obj_available__, this, call ) ) ) );
+}
+void Job::on_call_obj_available__( dialer::CallIPtr call )
+{
     SCOPE_LOCK( mutex_ );
 
     if( state_ == PREPARING )
@@ -110,6 +128,10 @@ void Job::on_call_obj_available( dialer::CallIPtr call )
     }
 }
 void Job::on_error( uint32 errorcode )
+{
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_error__, this, errorcode ) ) ) );
+}
+void Job::on_error__( uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -126,6 +148,10 @@ void Job::on_error( uint32 errorcode )
 }
 void Job::on_fatal_error( uint32 errorcode )
 {
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_fatal_error__, this, errorcode ) ) ) );
+}
+void Job::on_fatal_error__( uint32 errorcode )
+{
     SCOPE_LOCK( mutex_ );
 
     if( state_ == PREPARING || state_ == ACTIVE || state_ == IDLE )
@@ -140,6 +166,10 @@ void Job::on_fatal_error( uint32 errorcode )
     }
 }
 void Job::on_finished()
+{
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_finished__, this ) ) ) );
+}
+void Job::on_finished__()
 {
     SCOPE_LOCK( mutex_ );
 
@@ -170,9 +200,13 @@ void Job::on_ring()
 }
 void Job::on_connect()
 {
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_connect__, this ) ) ) );
+}
+void Job::on_connect__()
+{
     SCOPE_LOCK( mutex_ );
 
-    on_activate__();
+    on_activate___();
 }
 
 void Job::on_call_duration( uint32 t )
