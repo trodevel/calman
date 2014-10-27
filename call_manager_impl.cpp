@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1206 2014-10-24 20:09:39Z serge $
+// $Id: call_manager_impl.cpp 1211 2014-10-27 17:12:53Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -258,22 +258,6 @@ void CallManagerImpl::on_ready()
 
     if( jobs_.empty() )
         return; // no jobs to process, exit
-}
-void CallManagerImpl::on_busy()
-{
-    SCOPE_LOCK( mutex_ );
-
-    if( state_ != ICallManager::IDLE )
-    {
-        dummy_log_debug( MODULENAME, "on_busy: ignored in state %s", to_cstr( state_ ) );
-        return;
-    }
-
-    if( state_ == ICallManager::IDLE )
-    {
-        dummy_log_debug( MODULENAME, "on_busy: switching into state %s", "BUSY" );
-        state_  = ICallManager::BUSY;
-    }
 }
 void CallManagerImpl::on_error( uint32 errorcode )
 {

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1187 2014-10-22 18:16:17Z serge $
+// $Id: call_manager.cpp 1211 2014-10-27 17:12:53Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -122,12 +122,6 @@ void CallManager::on_ready()
     SCOPE_LOCK( mutex_ );
 
     proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_ready, impl_ ) ) ) );
-}
-void CallManager::on_busy()
-{
-    SCOPE_LOCK( mutex_ );
-
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_busy, impl_ ) ) ) );
 }
 void CallManager::on_error( uint32 errorcode )
 {
