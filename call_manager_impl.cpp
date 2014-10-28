@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1211 2014-10-27 17:12:53Z serge $
+// $Id: call_manager_impl.cpp 1219 2014-10-28 18:08:01Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -230,10 +230,29 @@ void CallManagerImpl::on_call_initiate_response( bool is_initiated, uint32 statu
 
     curr_job_->on_call_obj_available( call );
 
-    call->register_callback( boost::dynamic_pointer_cast< dialer::ICallCallback, IJob>( curr_job_ ) );
-
     state_  = ICallManager::BUSY;
 }
+
+void CallManagerImpl::on_call_started()
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ != ICallManager::BUSY )
+    {
+        dummy_log_debug( MODULENAME, "on_call_started: ignored in state %s", to_cstr( state_ ) );
+        return;
+    }
+
+    if( state_ == ICallManager::BUSY )
+    {
+        dummy_log_debug( MODULENAME, "on_call_started: call started" );
+
+        ASSERT( curr_job_ );    // curr job must not be empty
+
+        curr_job_->on_call_started();
+    }
+}
+
 void CallManagerImpl::on_ready()
 {
     SCOPE_LOCK( mutex_ );

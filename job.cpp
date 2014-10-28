@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 1203 2014-10-24 20:01:04Z serge $
+// $Id: job.cpp 1217 2014-10-28 18:06:24Z serge $
 
 #include "job.h"                    // self
 
@@ -30,6 +30,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../asyncp/async_proxy.h"      // AsyncProxy
 #include "../asyncp/event.h"            // new_event
+#include "../utils/assert.h"            // ASSERT
 
 NAMESPACE_CALMAN_START
 
@@ -75,38 +76,37 @@ void Job::on_processing_started__()
     }
     else
     {
-        dummy_log_warn( MODULENAME, "on_processing_started: ignored in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_processing_started: unexpected in state %u", state_ );
+
+        ASSERT( 0 );
     }
 }
 
 /**
- * @brief on_activate() is called when the connection is established
+ * @brief on_call_started() is called when the connection is established
  */
 
-void Job::on_activate()
+void Job::on_call_started()
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_activate__, this ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_call_started__, this ) ) ) );
 }
 
-void Job::on_activate__()
+void Job::on_call_started__()
 {
     SCOPE_LOCK( mutex_ );
 
-    on_activate__();
-}
-
-void Job::on_activate___()
-{
     if( state_ == PREPARING )
     {
         state_ = ACTIVE;
-        dummy_log_debug( MODULENAME, "on_activate: switched to ACTIVE" );
+        dummy_log_debug( MODULENAME, "on_call_started: switched to ACTIVE" );
 
         on_custom_activate();
     }
     else
     {
-        dummy_log_warn( MODULENAME, "on_activate: ignored in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_call_started: unexpected in state %u", state_ );
+
+        ASSERT( 0 );
     }
 }
 void Job::on_call_obj_available( dialer::CallIPtr call )
@@ -124,7 +124,9 @@ void Job::on_call_obj_available__( dialer::CallIPtr call )
     }
     else
     {
-        dummy_log_warn( MODULENAME, "on_call_obj_available: ignored in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_call_obj_available: unexpected in state %u", state_ );
+
+        ASSERT( 0 );
     }
 }
 void Job::on_error( uint32 errorcode )
@@ -143,26 +145,9 @@ void Job::on_error__( uint32 errorcode )
     }
     else
     {
-        dummy_log_warn( MODULENAME, "on_error: ignored in state %u", state_ );
-    }
-}
-void Job::on_fatal_error( uint32 errorcode )
-{
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_fatal_error__, this, errorcode ) ) ) );
-}
-void Job::on_fatal_error__( uint32 errorcode )
-{
-    SCOPE_LOCK( mutex_ );
+        dummy_log_fatal( MODULENAME, "on_error: unexpected in state %u", state_ );
 
-    if( state_ == PREPARING || state_ == ACTIVE || state_ == IDLE )
-    {
-        state_ = DONE;
-
-        dummy_log_debug( MODULENAME, "on_fatal_error: switched to DONE" );
-    }
-    else
-    {
-        dummy_log_warn( MODULENAME, "on_fatal_error: ignored in state %u", state_ );
+        ASSERT( 0 );
     }
 }
 void Job::on_finished()
@@ -183,35 +168,12 @@ void Job::on_finished__()
     }
     else
     {
-        dummy_log_warn( MODULENAME, "on_finished: ignored in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_finished: unexpected in state %u", state_ );
+
+        ASSERT( 0 );
     }
 }
 
-
-// dialer::ICallCallback
-void Job::on_call_end( uint32 errorcode )
-{
-}
-void Job::on_dial()
-{
-}
-void Job::on_ring()
-{
-}
-void Job::on_connect()
-{
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_connect__, this ) ) ) );
-}
-void Job::on_connect__()
-{
-    SCOPE_LOCK( mutex_ );
-
-    on_activate___();
-}
-
-void Job::on_call_duration( uint32 t )
-{
-}
 
 // virtual functions for overloading
 void Job::on_custom_processing_started()

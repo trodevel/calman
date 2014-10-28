@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_job.h 1050 2014-09-22 17:59:12Z serge $
+// $Id: i_job.h 1215 2014-10-28 17:48:09Z serge $
 
 #ifndef CALMAN_I_JOB_H
 #define CALMAN_I_JOB_H
@@ -42,7 +42,7 @@ public:
     virtual std::string get_property( const std::string & name ) const  = 0;
 
     virtual void on_processing_started()                        = 0;
-    virtual void on_activate()                                  = 0;
+    virtual void on_call_started()                              = 0;
     virtual void on_call_obj_available( dialer::CallIPtr call ) = 0;
     virtual void on_error( uint32 errorcode )                   = 0;
     virtual void on_finished()                                  = 0;

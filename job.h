@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 1202 2014-10-24 20:00:23Z serge $
+// $Id: job.h 1217 2014-10-28 18:06:24Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -29,7 +29,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/thread.hpp>         // boost::mutex
 
 #include "i_job.h"                  // IJob
-#include "../dialer/i_call_callback.h"  // ICallCallback
 
 namespace asyncp
 {
@@ -40,7 +39,7 @@ NAMESPACE_CALMAN_START
 
 class CallManager;
 
-class Job: virtual public IJob, virtual public dialer::ICallCallback
+class Job: virtual public IJob
 {
 public:
     enum status_e
@@ -63,18 +62,10 @@ public:
     virtual std::string get_property( const std::string & name ) const;
 
     void on_processing_started();
-    void on_activate();
+    void on_call_started();
     void on_call_obj_available( dialer::CallIPtr call );
     void on_error( uint32 errorcode );
     void on_finished();
-
-    // dialer::ICallCallback
-    void on_fatal_error( uint32 errorcode );
-    void on_call_end( uint32 errorcode );
-    void on_dial();
-    void on_ring();
-    void on_connect();
-    void on_call_duration( uint32 t );
 
 protected:
     // virtual functions for overloading
@@ -83,19 +74,12 @@ protected:
     virtual void on_custom_finished();
 
 private:
-    void on_activate___();
-
-private:
     // IJob interface
     void on_processing_started__();
-    void on_activate__();
+    void on_call_started__();
     void on_call_obj_available__( dialer::CallIPtr call );
     void on_error__( uint32 errorcode );
     void on_finished__();
-
-    // dialer::ICallCallback
-    void on_fatal_error__( uint32 errorcode );
-    void on_connect__();
 
 protected:
 
