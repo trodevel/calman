@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.h 1219 2014-10-28 18:08:01Z serge $
+// $Id: call_manager_impl.h 1221 2014-10-28 22:35:14Z serge $
 
 #ifndef CALL_MANAGER_IMPL_H
 #define CALL_MANAGER_IMPL_H
@@ -93,6 +93,8 @@ private:
     IJobPtr                     curr_job_;
 
     uint32                      last_id_;
+
+    dialer::CallIPtr            curr_call_;
 };
 
 NAMESPACE_CALMAN_END

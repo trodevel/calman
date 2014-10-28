@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1219 2014-10-28 18:08:01Z serge $
+// $Id: call_manager_impl.cpp 1221 2014-10-28 22:35:14Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -228,7 +228,7 @@ void CallManagerImpl::on_call_initiate_response( bool is_initiated, uint32 statu
         return;
     }
 
-    curr_job_->on_call_obj_available( call );
+    curr_call_  = call;
 
     state_  = ICallManager::BUSY;
 }
@@ -249,7 +249,9 @@ void CallManagerImpl::on_call_started()
 
         ASSERT( curr_job_ );    // curr job must not be empty
 
-        curr_job_->on_call_started();
+        ASSERT( curr_call_ );   // curr call must not be empty
+
+        curr_job_->on_call_started( curr_call_ );
     }
 }
 
@@ -273,6 +275,8 @@ void CallManagerImpl::on_ready()
         curr_job_->on_finished();
 
         curr_job_.reset();      // as call finished, curr job can be deleted
+
+        curr_call_.reset();     // clear current call
     }
 
     if( jobs_.empty() )
@@ -287,6 +291,8 @@ void CallManagerImpl::on_error( uint32 errorcode )
         dummy_log_debug( MODULENAME, "on_error: ignored in state %s", to_cstr( state_ ) );
 
         ASSERT( curr_job_ == nullptr );    // curr job must be empty
+
+        ASSERT( curr_call_ == nullptr );   // curr call must be empty
 
         return;
     }

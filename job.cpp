@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.cpp 1217 2014-10-28 18:06:24Z serge $
+// $Id: job.cpp 1223 2014-10-28 22:55:26Z serge $
 
 #include "job.h"                    // self
 
@@ -36,18 +36,35 @@ NAMESPACE_CALMAN_START
 
 #define MODULENAME      "Job"
 
+JobImpl::JobImpl(
+        const std::string       & party ):
+        call_( 0L ), party_( party ), state_( IDLE )
+{
+}
+JobImpl::~JobImpl()
+{
+}
+
+
 Job::Job(
         const std::string       & party,
         asyncp::IAsyncProxy     * proxy ):
-        proxy_( proxy ), call_( 0L ), party_( party ), state_( IDLE )
+                JobImpl( party ), proxy_( proxy )
 {
 }
 Job::~Job()
 {
 }
 
+
 // IJob interface
 std::string Job::get_property( const std::string & name ) const
+{
+    return Base::get_property( name );
+}
+
+// IJob interface
+std::string JobImpl::get_property( const std::string & name ) const
 {
     SCOPE_LOCK( mutex_ );
 
@@ -61,9 +78,9 @@ std::string Job::get_property( const std::string & name ) const
 
 void Job::on_processing_started()
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_processing_started__, this ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Base::on_processing_started, this ) ) ) );
 }
-void Job::on_processing_started__()
+void JobImpl::on_processing_started()
 {
     SCOPE_LOCK( mutex_ );
 
@@ -86,21 +103,26 @@ void Job::on_processing_started__()
  * @brief on_call_started() is called when the connection is established
  */
 
-void Job::on_call_started()
+void Job::on_call_started( dialer::CallIPtr call )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_call_started__, this ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Base::on_call_started, this, call ) ) ) );
 }
 
-void Job::on_call_started__()
+void JobImpl::on_call_started( dialer::CallIPtr call )
 {
     SCOPE_LOCK( mutex_ );
 
     if( state_ == PREPARING )
     {
         state_ = ACTIVE;
+
         dummy_log_debug( MODULENAME, "on_call_started: switched to ACTIVE" );
 
-        on_custom_activate();
+        ASSERT( call );
+
+        call_ = call;
+
+        on_custom_call_started();
     }
     else
     {
@@ -109,31 +131,11 @@ void Job::on_call_started__()
         ASSERT( 0 );
     }
 }
-void Job::on_call_obj_available( dialer::CallIPtr call )
-{
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_call_obj_available__, this, call ) ) ) );
-}
-void Job::on_call_obj_available__( dialer::CallIPtr call )
-{
-    SCOPE_LOCK( mutex_ );
-
-    if( state_ == PREPARING )
-    {
-        call_ = call;
-        dummy_log_debug( MODULENAME, "on_call_obj_available: got CallI" );
-    }
-    else
-    {
-        dummy_log_fatal( MODULENAME, "on_call_obj_available: unexpected in state %u", state_ );
-
-        ASSERT( 0 );
-    }
-}
 void Job::on_error( uint32 errorcode )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_error__, this, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Base::on_error, this, errorcode ) ) ) );
 }
-void Job::on_error__( uint32 errorcode )
+void JobImpl::on_error( uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -152,9 +154,9 @@ void Job::on_error__( uint32 errorcode )
 }
 void Job::on_finished()
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Job::on_finished__, this ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &Base::on_finished, this ) ) ) );
 }
-void Job::on_finished__()
+void JobImpl::on_finished()
 {
     SCOPE_LOCK( mutex_ );
 
@@ -176,15 +178,15 @@ void Job::on_finished__()
 
 
 // virtual functions for overloading
-void Job::on_custom_processing_started()
+void JobImpl::on_custom_processing_started()
 {
 }
 
-void Job::on_custom_activate()
+void JobImpl::on_custom_call_started()
 {
 }
 
-void Job::on_custom_finished()
+void JobImpl::on_custom_finished()
 {
 }
 

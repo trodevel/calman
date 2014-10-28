@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: job.h 1217 2014-10-28 18:06:24Z serge $
+// $Id: job.h 1223 2014-10-28 22:55:26Z serge $
 
 #ifndef CALMAN_JOB_H
 #define CALMAN_JOB_H
@@ -39,7 +39,7 @@ NAMESPACE_CALMAN_START
 
 class CallManager;
 
-class Job: virtual public IJob
+class JobImpl
 {
 public:
     enum status_e
@@ -52,6 +52,44 @@ public:
     };
 
 public:
+    JobImpl(
+        const std::string       & party );
+
+    virtual ~JobImpl();
+
+    // IJob interface
+    std::string get_property( const std::string & name ) const;
+
+    void on_processing_started();
+    void on_call_started( dialer::CallIPtr call );
+    void on_error( uint32 errorcode );
+    void on_finished();
+
+protected:
+    // virtual functions for overloading
+    virtual void on_custom_processing_started();
+    virtual void on_custom_call_started();
+    virtual void on_custom_finished();
+
+
+protected:
+
+    dialer::CallIPtr        call_;
+
+    std::string             party_;
+
+private:
+    mutable boost::mutex    mutex_;
+
+    status_e                state_;
+};
+
+
+class Job: public JobImpl, virtual public IJob
+{
+    typedef JobImpl Base;
+
+public:
     Job(
         const std::string       & party,
         asyncp::IAsyncProxy     * proxy );
@@ -62,37 +100,13 @@ public:
     virtual std::string get_property( const std::string & name ) const;
 
     void on_processing_started();
-    void on_call_started();
-    void on_call_obj_available( dialer::CallIPtr call );
+    void on_call_started( dialer::CallIPtr call );
     void on_error( uint32 errorcode );
     void on_finished();
 
 protected:
-    // virtual functions for overloading
-    virtual void on_custom_processing_started();
-    virtual void on_custom_activate();
-    virtual void on_custom_finished();
-
-private:
-    // IJob interface
-    void on_processing_started__();
-    void on_call_started__();
-    void on_call_obj_available__( dialer::CallIPtr call );
-    void on_error__( uint32 errorcode );
-    void on_finished__();
-
-protected:
 
     asyncp::IAsyncProxy     * proxy_;
-
-    dialer::CallIPtr        call_;
-
-    std::string             party_;
-
-private:
-    mutable boost::mutex    mutex_;
-
-    status_e                state_;
 };
 
 NAMESPACE_CALMAN_END
