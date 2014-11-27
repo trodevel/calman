@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.h 1221 2014-10-28 22:35:14Z serge $
+// $Id: call_manager_impl.h 1236 2014-11-26 19:15:35Z serge $
 
 #ifndef CALL_MANAGER_IMPL_H
 #define CALL_MANAGER_IMPL_H
@@ -29,7 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/thread.hpp>             // boost::mutex
 #include <boost/thread/condition.hpp>   // boost::condition
 
-#include "i_call_manager.h"                 // IJob
+#include "call.h"                           // Call
 #include "config.h"                         // Config
 #include "../dialer/i_dialer_callback.h"    // IDialerCallback
 #include "../threcon/i_controllable.h"      // IControllable
@@ -54,17 +54,22 @@ public:
     bool init( dialer::IDialer * dialer, const Config & cfg );
 
     // ICallManager interface
-    bool insert_job( IJobPtr job );
-    bool remove_job( IJobPtr job );
+    bool insert_job( uint32 job_id, const std::string & party );
+    bool remove_job( uint32 job_id );
 
     void wakeup();
 
-    // IDialerCallback interface
-    void on_registered( bool b );
-    void on_call_initiate_response( bool is_initiated, uint32 status, dialer::CallIPtr call );
-    void on_call_started();
+    // interface IDialerCallback
+    void on_call_initiate_response( uint32 call_id, uint32 status );
+    void on_error_response( uint32 error, const std::string & descr );
+    void on_dial( uint32 call_id );
+    void on_ring( uint32 call_id );
+    void on_call_started( uint32 call_id );
+    void on_call_duration( uint32 call_id, uint32 t );
+    void on_call_end( uint32 call_id, uint32 errorcode );
     void on_ready();
-    void on_error( uint32 errorcode );
+    void on_error( uint32 call_id, uint32 errorcode );
+    void on_fatal_error( uint32 call_id, uint32 errorcode );
 
     // interface threcon::IControllable
     bool shutdown();
@@ -75,7 +80,8 @@ private:
 
 private:
 
-    typedef std::list<IJobPtr>  JobList;
+    typedef std::list<uint32>           JobQueue;
+    typedef std::map<uint32, CallPtr>   MapIdToCall;
 
 private:
     mutable boost::mutex        mutex_;
@@ -86,15 +92,17 @@ private:
 
     ICallManager::state_e       state_;
 
-    JobList                     jobs_;
+    JobQueue                    job_queue_;
+    MapIdToCall                 map_job_id_to_call_;
+    MapIdToCall                 map_id_to_call_;
 
     dialer::IDialer             * dialer_;
 
-    IJobPtr                     curr_job_;
+    uint32                      curr_job_;
 
     uint32                      last_id_;
 
-    dialer::CallIPtr            curr_call_;
+    CallPtr                     curr_call_;
 };
 
 NAMESPACE_CALMAN_END

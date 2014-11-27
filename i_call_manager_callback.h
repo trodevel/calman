@@ -1,6 +1,6 @@
 /*
 
-Job.
+ICallManagerCallback.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -20,35 +20,32 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_job.h 1220 2014-10-28 22:33:57Z serge $
+// $Id: i_call_manager_callback.h 1236 2014-11-26 19:15:35Z serge $
 
-#ifndef CALMAN_I_JOB_H
-#define CALMAN_I_JOB_H
+#ifndef CALMAN_I_CALL_MANAGER_CALLBACK_H
+#define CALMAN_I_CALL_MANAGER_CALLBACK_H
 
 #include <string>                   // std::string
-#include "../dialer/call_i.h"       // CallIPtr
 #include "../utils/types.h"         // uint32
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
 
-class IJob
+class ICallManagerCallback
 {
 public:
 
-    virtual ~IJob() {};
+    virtual ~ICallManagerCallback() {};
 
-    virtual std::string get_property( const std::string & name ) const  = 0;
-
-    virtual void on_processing_started()                        = 0;
-    virtual void on_call_started( dialer::CallIPtr call )       = 0;
-    virtual void on_error( uint32 errorcode )                   = 0;
-    virtual void on_finished()                                  = 0;
+    virtual void on_processing_started( uint32 job_id )         = 0;
+    virtual void on_call_started( uint32 job_id )               = 0;
+    virtual void on_play_started( uint32 job_id )               = 0;
+    virtual void on_play_stopped( uint32 job_id )               = 0;
+    virtual void on_error( uint32 job_id, uint32 errorcode )    = 0;
+    virtual void on_finished( uint32 job_id )                   = 0;
 };
-
-typedef boost::shared_ptr< IJob >   IJobPtr;
 
 NAMESPACE_CALMAN_END
 
-#endif  // CALMAN_I_JOB_H
+#endif  // CALMAN_I_CALL_MANAGER_CALLBACK_H

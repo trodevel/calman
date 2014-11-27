@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 1172 2014-10-20 17:30:51Z serge $
+// $Id: i_call_manager.h 1236 2014-11-26 19:15:35Z serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H
@@ -29,7 +29,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/types.h"         // uint32
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
-#include "i_job.h"                  // IJob
 
 NAMESPACE_CALMAN_START
 
@@ -47,8 +46,8 @@ public:
 public:
     virtual ~ICallManager() {};
 
-    virtual bool insert_job( IJobPtr job )                          = 0;
-    virtual bool remove_job( IJobPtr job )                          = 0;
+    virtual bool insert_job( uint32 job_id, const std::string & party ) = 0;
+    virtual bool remove_job( uint32 job_id )                            = 0;
 };
 
 NAMESPACE_CALMAN_END

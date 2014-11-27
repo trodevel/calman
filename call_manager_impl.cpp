@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1221 2014-10-28 22:35:14Z serge $
+// $Id: call_manager_impl.cpp 1236 2014-11-26 19:15:35Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -59,7 +59,7 @@ CallManagerImpl::~CallManagerImpl()
     SCOPE_LOCK( mutex_ );
 
 
-    jobs_.clear();
+    job_queue_.clear();
 
     if( curr_job_ )
     {
@@ -112,14 +112,14 @@ void CallManagerImpl::process_jobs()
 {
     // private: no MUTEX lock needed
 
-    if( jobs_.empty() )
+    if( job_queue_.empty() )
         return;
 
     ASSERT( curr_job_ == 0L );  // curr_job_ must be empty
 
-    curr_job_ = jobs_.front();
+    curr_job_ = job_queue_.front();
 
-    jobs_.pop_front();
+    job_queue_.pop_front();
 
     process_current_job();
 }
@@ -141,37 +141,71 @@ void CallManagerImpl::process_current_job()
     state_  = ICallManager::WAITING_DIALER;
 }
 
-bool CallManagerImpl::insert_job( IJobPtr job )
+bool CallManagerImpl::insert_job( uint32 job_id, const std::string & party )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( std::find( jobs_.begin(), jobs_.end(), job ) != jobs_.end() )
+    if( map_job_id_to_call_.count( job_id ) > 0 )
     {
-        dummy_log_error( MODULENAME, "insert_job: job %p already exists", job.get() );
+        dummy_log_error( MODULENAME, "insert_job: job %u already exists", job_id );
 
         return false;
     }
 
-    jobs_.push_back( job );
+    CallPtr call    = new Call( job_id, party, nullptr );
 
-    dummy_log_debug( MODULENAME, "insert_job: inserted job %p", job.get() );
+    job_queue_.push_back( job_id );
+
+    ASSERT( map_job_id_to_call_.insert( MapIdToCall::value_type( job_id, call ) ).second );
+
+    dummy_log_debug( MODULENAME, "insert_job: inserted job %u", job_id );
 
     return true;
 }
-bool CallManagerImpl::remove_job( IJobPtr job )
+bool CallManagerImpl::remove_job( uint32 job_id )
 {
     SCOPE_LOCK( mutex_ );
 
-    JobList::iterator it = std::find( jobs_.begin(), jobs_.end(), job );
-    if( it == jobs_.end() )
+    uint32 call_id  = 0;
+
     {
-        dummy_log_error( MODULENAME, "ERROR: cannot remove job %p - it doesn't exist", job.get() );
-        return false;
+        MapIdToCall::iterator it = map_job_id_to_call_.find( job_id );
+        if( it == map_job_id_to_call_.end() )
+        {
+            dummy_log_fatal( MODULENAME, "cannot remove job %u - it doesn't exist", job_id );
+            ASSERT( 0 );
+            return false;
+        }
+
+        dummy_log_debug( MODULENAME, "removed job %u from map", job_id );
+
+        CallPtr call = (*it).second;
+
+        call_id  = call->get_call_id();
     }
 
-    dummy_log_debug( MODULENAME, "remove_job: removed job %p", job.get() );
+    {
+        JobQueue::iterator it = std::find( job_queue_.begin(), job_queue_.end(), job_id );
+        if( it != job_queue_.end() )
+        {
+            dummy_log_debug( MODULENAME, "removed job %u from pending queue", job_id );
 
-    jobs_.erase( it );
+            job_queue_.erase( it );
+        }
+    }
+
+    if( call_id != 0 )
+    {
+        MapIdToCall::iterator it = map_id_to_call_.find( call_id );
+        if( it == map_id_to_call_.end() )
+        {
+            dummy_log_fatal( MODULENAME, "cannot remove call %u for job %u - it doesn't exist", call_id, job_id );
+            ASSERT( 0 );
+            return false;
+        }
+
+        dummy_log_debug( MODULENAME, "removed call %u for job %u from map", call_id, job_id );
+    }
 
     return true;
 }
@@ -205,7 +239,7 @@ void CallManagerImpl::on_registered( bool b )
     state_  = ICallManager::IDLE;
 }
 
-void CallManagerImpl::on_call_initiate_response( bool is_initiated, uint32 status, dialer::CallIPtr call )
+void CallManagerImpl::on_call_initiate_response( bool is_initiated, uint32 status, CallPtr call )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -279,7 +313,7 @@ void CallManagerImpl::on_ready()
         curr_call_.reset();     // clear current call
     }
 
-    if( jobs_.empty() )
+    if( job_queue_.empty() )
         return; // no jobs to process, exit
 }
 void CallManagerImpl::on_error( uint32 errorcode )
