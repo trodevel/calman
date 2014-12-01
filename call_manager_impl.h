@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.h 1236 2014-11-26 19:15:35Z serge $
+// $Id: call_manager_impl.h 1237 2014-11-28 18:10:22Z serge $
 
 #ifndef CALL_MANAGER_IMPL_H
 #define CALL_MANAGER_IMPL_H
@@ -44,6 +44,7 @@ class IDialer;
 NAMESPACE_CALMAN_START
 
 class Job;
+class ICallManagerCallback;
 
 class CallManagerImpl
 {
@@ -52,6 +53,8 @@ public:
     ~CallManagerImpl();
 
     bool init( dialer::IDialer * dialer, const Config & cfg );
+
+    bool register_callback( ICallManagerCallback * callback );
 
     // ICallManager interface
     bool insert_job( uint32 job_id, const std::string & party );
@@ -78,9 +81,12 @@ private:
     void process_jobs();
     void process_current_job();
 
+    CallPtr get_call_by_job_id( uint32 id );
+    CallPtr get_call_by_call_id( uint32 id );
+
 private:
 
-    typedef std::list<uint32>           JobQueue;
+    typedef std::list<uint32>           JobIdQueue;
     typedef std::map<uint32, CallPtr>   MapIdToCall;
 
 private:
@@ -92,13 +98,14 @@ private:
 
     ICallManager::state_e       state_;
 
-    JobQueue                    job_queue_;
+    JobIdQueue                  job_id_queue_;
     MapIdToCall                 map_job_id_to_call_;
     MapIdToCall                 map_id_to_call_;
 
     dialer::IDialer             * dialer_;
+    ICallManagerCallback        * callback_;
 
-    uint32                      curr_job_;
+    uint32                      curr_job_id_;
 
     uint32                      last_id_;
 

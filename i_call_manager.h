@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 1236 2014-11-26 19:15:35Z serge $
+// $Id: i_call_manager.h 1237 2014-11-28 18:10:22Z serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H
@@ -39,7 +39,8 @@ public:
     {
         UNDEF   = 0,
         IDLE,
-        WAITING_DIALER,
+        WAITING_DIALER_RESP,
+        WAITING_DIALER_FREE,
         BUSY
     };
 
