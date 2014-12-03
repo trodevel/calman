@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 1237 2014-11-28 18:10:22Z serge $
+// $Id: i_call_manager.h 1241 2014-12-02 19:14:46Z serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H
@@ -34,16 +34,6 @@ NAMESPACE_CALMAN_START
 
 class ICallManager
 {
-public:
-    enum state_e
-    {
-        UNDEF   = 0,
-        IDLE,
-        WAITING_DIALER_RESP,
-        WAITING_DIALER_FREE,
-        BUSY
-    };
-
 public:
     virtual ~ICallManager() {};
 

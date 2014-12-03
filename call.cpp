@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1236 2014-11-26 19:15:35Z serge $
+// $Id: call.cpp 1241 2014-12-02 19:14:46Z serge $
 
 #include "call.h"                       // self
 
@@ -46,10 +46,6 @@ Call::Call(
 {
     ASSERT( parent_job_id );
 }
-Call::~Call()
-{
-}
-
 
 const std::string & Call::get_party() const
 {

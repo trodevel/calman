@@ -20,39 +20,38 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1237 2014-11-28 18:10:22Z serge $
+// $Id: call_manager_impl.cpp 1242 2014-12-02 19:16:35Z serge $
 
 #include "call_manager_impl.h"          // self
 
 #include <boost/thread.hpp>             // boost::this_thread
 
-#include "../utils/assert.h"            // ASSERT
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../dialer/i_dialer.h"         // IDialer
+#include "../utils/assert.h"            // ASSERT
 
 #include "i_call_manager_callback.h"    // ICallManagerCallback
-#include "job.h"                        // Job
 
 #define MODULENAME      "CallManager"
 
 NAMESPACE_CALMAN_START
 
-const char* to_c_str( ICallManager::state_e s )
+const char* to_c_str( CallManagerImpl::state_e s )
 {
     static const char *vals[]=
     {
             "UNDEF", "IDLE", "WAITING_DIALER_RESP", "WAITING_DIALER_FREE", "BUSY"
     };
 
-    if( s < ICallManager::UNDEF || s > ICallManager::BUSY )
+    if( s < CallManagerImpl::UNDEF || s > CallManagerImpl::BUSY )
         return vals[0];
 
     return vals[ (int) s ];
 }
 
 CallManagerImpl::CallManagerImpl():
-    must_stop_( false ), state_( ICallManager::UNDEF ), dialer_( 0L ), callback_( nullptr ), curr_job_id_( 0L ), last_id_( 0 )
+    must_stop_( false ), state_( UNDEF ), dialer_( 0L ), callback_( nullptr ), curr_job_id_( 0L )
 {
 }
 CallManagerImpl::~CallManagerImpl()
@@ -109,12 +108,13 @@ void CallManagerImpl::wakeup()
 
     switch( state_ )
     {
-    case ICallManager::IDLE:
+    case IDLE:
         process_jobs();
         break;
 
-    case ICallManager::BUSY:
-    case ICallManager::WAITING_DIALER_RESP:
+    case BUSY:
+    case WAITING_DIALER_RESP:
+    case WAITING_DIALER_FREE:
         break;
 
     default:
@@ -143,7 +143,7 @@ void CallManagerImpl::process_current_job()
 {
     // private: no MUTEX lock needed
 
-    ASSERT( state_ == ICallManager::IDLE ); // just paranoid check
+    ASSERT( state_ == IDLE ); // just paranoid check
 
     ASSERT( curr_job_id_ );  // job must not be empty
 
@@ -154,7 +154,7 @@ void CallManagerImpl::process_current_job()
 
     dialer_->initiate_call( party );
 
-    state_  = ICallManager::WAITING_DIALER_RESP;
+    state_  = WAITING_DIALER_RESP;
 }
 
 CallPtr CallManagerImpl::get_call_by_job_id( uint32 id )
@@ -168,9 +168,21 @@ CallPtr CallManagerImpl::get_call_by_job_id( uint32 id )
 
 CallPtr CallManagerImpl::get_call_by_call_id( uint32 id )
 {
-    MapIdToCall::iterator it = map_id_to_call_.find( id );
+    uint32 job_id   = get_job_id_by_call_id( id );
 
-    ASSERT( it != map_id_to_call_.end() );
+    return get_call_by_job_id( job_id );
+}
+
+uint32 CallManagerImpl::get_call_id_by_job_id( uint32 id )
+{
+    return get_call_by_job_id( id )->get_call_id();
+}
+
+uint32 CallManagerImpl::get_job_id_by_call_id( uint32 id )
+{
+    MapIdToId::iterator it = map_call_id_to_job_id_.find( id );
+
+    ASSERT( it != map_call_id_to_job_id_.end() );
 
     return (*it).second;
 }
@@ -186,7 +198,7 @@ bool CallManagerImpl::insert_job( uint32 job_id, const std::string & party )
         return false;
     }
 
-    CallPtr call    = new Call( job_id, party, nullptr );
+    CallPtr call( new Call( job_id, party, callback_ ) );
 
     job_id_queue_.push_back( job_id );
 
@@ -199,6 +211,12 @@ bool CallManagerImpl::insert_job( uint32 job_id, const std::string & party )
 bool CallManagerImpl::remove_job( uint32 job_id )
 {
     SCOPE_LOCK( mutex_ );
+
+    return remove_job__( job_id );
+}
+bool CallManagerImpl::remove_job__( uint32 job_id )
+{
+    // private: no mutex lock
 
     uint32 call_id  = 0;
 
@@ -230,8 +248,8 @@ bool CallManagerImpl::remove_job( uint32 job_id )
 
     if( call_id != 0 )
     {
-        MapIdToCall::iterator it = map_id_to_call_.find( call_id );
-        if( it == map_id_to_call_.end() )
+        MapIdToId::iterator it = map_call_id_to_job_id_.find( call_id );
+        if( it == map_call_id_to_job_id_.end() )
         {
             dummy_log_fatal( MODULENAME, "cannot remove call %u for job %u - it doesn't exist", call_id, job_id );
             ASSERT( 0 );
@@ -258,7 +276,7 @@ void CallManagerImpl::on_call_initiate_response( uint32 call_id, uint32 status )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != ICallManager::WAITING_DIALER_RESP )
+    if( state_ != WAITING_DIALER_RESP )
     {
         dummy_log_fatal( MODULENAME, "on_call_initiate_response: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
@@ -267,16 +285,16 @@ void CallManagerImpl::on_call_initiate_response( uint32 call_id, uint32 status )
 
     ASSERT( curr_job_id_ );    // curr job must not be empty
 
-    curr_call_  = call;
+    ASSERT( map_call_id_to_job_id_.insert( MapIdToId::value_type( call_id, curr_job_id_) ).second );
 
-    state_  = ICallManager::BUSY;
+    state_  = BUSY;
 }
 
 void CallManagerImpl::on_error_response( uint32 error, const std::string & descr )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != ICallManager::WAITING_DIALER_RESP )
+    if( state_ != WAITING_DIALER_RESP )
     {
         dummy_log_fatal( MODULENAME, "on_error_response: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
@@ -287,86 +305,125 @@ void CallManagerImpl::on_error_response( uint32 error, const std::string & descr
 
     dummy_log_error( MODULENAME, "on_error_response: dialer is busy, error %u, %s", error, descr.c_str() );
 
-    state_  = ICallManager::WAITING_DIALER_FREE;
+    state_  = WAITING_DIALER_FREE;
 }
 
-
-void CallManagerImpl::on_call_started()
+void CallManagerImpl::on_dial( uint32 call_id )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != ICallManager::BUSY )
-    {
-        dummy_log_debug( MODULENAME, "on_call_started: ignored in state %s", to_c_str( state_ ) );
-        return;
-    }
+    ASSERT( state_ == BUSY );
+    ASSERT( curr_job_id_ );     // curr job must not be empty
+    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
 
-    if( state_ == ICallManager::BUSY )
-    {
-        dummy_log_debug( MODULENAME, "on_call_started: call started" );
+    get_call_by_call_id( call_id )->on_dial();
+}
+void CallManagerImpl::on_ring( uint32 call_id )
+{
+    SCOPE_LOCK( mutex_ );
 
-        ASSERT( curr_job_id_ );    // curr job must not be empty
+    ASSERT( state_ == BUSY );
+    ASSERT( curr_job_id_ );     // curr job must not be empty
+    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
 
-        ASSERT( curr_call_ );   // curr call must not be empty
+    get_call_by_call_id( call_id )->on_ring();
+}
 
-        curr_job_id_->on_call_started( curr_call_ );
-    }
+void CallManagerImpl::on_call_started( uint32 call_id )
+{
+    SCOPE_LOCK( mutex_ );
+
+    ASSERT( state_ == BUSY );
+    ASSERT( curr_job_id_ );     // curr job must not be empty
+    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+
+    get_call_by_call_id( call_id )->on_call_started();
+}
+
+void CallManagerImpl::on_call_duration( uint32 call_id, uint32 t )
+{
+    SCOPE_LOCK( mutex_ );
+
+    ASSERT( state_ == BUSY );
+    ASSERT( curr_job_id_ );     // curr job must not be empty
+    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+
+    get_call_by_call_id( call_id )->on_call_duration( t );
+}
+
+void CallManagerImpl::on_call_end( uint32 call_id, uint32 errorcode )
+{
+    SCOPE_LOCK( mutex_ );
+
+    ASSERT( state_ == BUSY );
+    ASSERT( curr_job_id_ );    // curr job must not be empty
+    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+
+    get_call_by_call_id( call_id )->on_call_end( errorcode );
 }
 
 void CallManagerImpl::on_ready()
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != ICallManager::BUSY )
-    {
-        dummy_log_debug( MODULENAME, "on_ready: ignored in state %s", to_c_str( state_ ) );
-        return;
-    }
+    ASSERT( state_ == BUSY || state_ == WAITING_DIALER_FREE );
 
-    if( state_ == ICallManager::BUSY )
+    switch( state_ )
+    {
+
+    case BUSY:
     {
         dummy_log_debug( MODULENAME, "on_ready: switching into state %s", "IDLE" );
-        state_  = ICallManager::IDLE;
+        state_  = IDLE;
 
         ASSERT( curr_job_id_ );    // curr job must not be empty
 
-        curr_job_id_->on_finished();
+        remove_job__( curr_job_id_ );
 
-        curr_job_id_.reset();      // as call finished, curr job can be deleted
+        curr_job_id_    = 0;      // as call finished, curr job can be deleted
 
-        curr_call_.reset();     // clear current call
+        // TODO add queue check, eb02
     }
+    break;
 
-    if( job_id_queue_.empty() )
-        return; // no jobs to process, exit
+    case WAITING_DIALER_FREE:
+    {
+        dummy_log_debug( MODULENAME, "on_ready: switching into state %s", "WAITING_DIALER_RESP" );
+
+        ASSERT( curr_job_id_ );    // curr job must not be empty
+
+        const std::string & party = get_call_by_job_id( curr_job_id_ )->get_party();
+
+        dialer_->initiate_call( party );
+
+        state_  = WAITING_DIALER_RESP;
+    }
+    break;
+
+    default:
+        break;
+    }
 }
-void CallManagerImpl::on_error( uint32 errorcode )
+void CallManagerImpl::on_error( uint32 call_id, uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != ICallManager::BUSY )
-    {
-        dummy_log_debug( MODULENAME, "on_error: ignored in state %s", to_c_str( state_ ) );
+    ASSERT( state_ == BUSY );
+    ASSERT( curr_job_id_ );    // curr job must not be empty
+    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
 
-        ASSERT( curr_job_id_ == nullptr );    // curr job must be empty
+    get_call_by_call_id( call_id )->on_error( errorcode );
+}
 
-        ASSERT( curr_call_ == nullptr );   // curr call must be empty
+void CallManagerImpl::on_fatal_error( uint32 call_id, uint32 errorcode )
+{
+    SCOPE_LOCK( mutex_ );
 
-        return;
-    }
+    ASSERT( state_ == BUSY );
+    ASSERT( curr_job_id_ );    // curr job must not be empty
+    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
 
-    if( state_ == ICallManager::BUSY )
-    {
-        dummy_log_debug( MODULENAME, "on_error: call failed, switching into state %s", "IDLE" );
-
-        ASSERT( curr_job_id_ );    // curr job must not be empty
-
-        curr_job_id_->on_error( errorcode );
-
-        curr_job_id_.reset();      // as call finished, curr job can be deleted
-
-        state_  = ICallManager::IDLE;
-    }
+    get_call_by_call_id( call_id )->on_fatal_error( errorcode );
 }
 
 NAMESPACE_CALMAN_END

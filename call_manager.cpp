@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1218 2014-10-28 18:07:17Z serge $
+// $Id: call_manager.cpp 1239 2014-12-02 18:40:44Z serge $
 
 #include "call_manager.h"                 // self
 
@@ -76,21 +76,28 @@ void CallManager::thread_func()
     dummy_log_debug( MODULENAME, "thread_func: ended" );
 }
 
-bool CallManager::insert_job( IJobPtr job )
+bool CallManager::register_callback( ICallManagerCallback * callback )
 {
     SCOPE_LOCK( mutex_ );
 
-    bool res = impl_->insert_job( job );
+    return impl_->register_callback( callback );
+}
+
+bool CallManager::insert_job( uint32 job_id, const std::string & party )
+{
+    SCOPE_LOCK( mutex_ );
+
+    bool res = impl_->insert_job( job_id, party );
 
     proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::wakeup, impl_ ) ) ) );
 
     return res;
 }
-bool CallManager::remove_job( IJobPtr job )
+bool CallManager::remove_job( uint32 job_id )
 {
     SCOPE_LOCK( mutex_ );
 
-    bool res = impl_->remove_job( job );
+    bool res = impl_->remove_job( job_id );
 
     proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::wakeup, impl_ ) ) ) );
 
@@ -105,23 +112,47 @@ bool CallManager::shutdown()
 }
 
 // IDialerCallback interface
-void CallManager::on_registered( bool b )
+void CallManager::on_call_initiate_response( uint32 call_id, uint32 status )
 {
     SCOPE_LOCK( mutex_ );
 
-    impl_->on_registered( b );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_initiate_response, impl_, call_id, status ) ) ) );
 }
-void CallManager::on_call_initiate_response( bool is_initiated, uint32 status, dialer::CallIPtr call )
+void CallManager::on_error_response( uint32 call_id, const std::string & descr )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_initiate_response, impl_, is_initiated, status, call ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_error_response, impl_, call_id, descr ) ) ) );
 }
-void CallManager::on_call_started()
+void CallManager::on_dial( uint32 call_id )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_started, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_dial, impl_, call_id ) ) ) );
+}
+void CallManager::on_ring( uint32 call_id )
+{
+    SCOPE_LOCK( mutex_ );
+
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_ring, impl_, call_id ) ) ) );
+}
+void CallManager::on_call_started( uint32 call_id )
+{
+    SCOPE_LOCK( mutex_ );
+
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_started, impl_, call_id ) ) ) );
+}
+void CallManager::on_call_duration( uint32 call_id, uint32 t )
+{
+    SCOPE_LOCK( mutex_ );
+
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_duration, impl_, call_id, t ) ) ) );
+}
+void CallManager::on_call_end( uint32 call_id, uint32 errorcode )
+{
+    SCOPE_LOCK( mutex_ );
+
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_call_end, impl_, call_id, errorcode ) ) ) );
 }
 void CallManager::on_ready()
 {
@@ -129,11 +160,17 @@ void CallManager::on_ready()
 
     proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_ready, impl_ ) ) ) );
 }
-void CallManager::on_error( uint32 errorcode )
+void CallManager::on_error( uint32 call_id, uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_error, impl_, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_error, impl_, call_id, errorcode ) ) ) );
+}
+void CallManager::on_fatal_error( uint32 call_id, uint32 errorcode )
+{
+    SCOPE_LOCK( mutex_ );
+
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallManagerImpl::on_fatal_error, impl_, call_id, errorcode ) ) ) );
 }
 
 NAMESPACE_CALMAN_END

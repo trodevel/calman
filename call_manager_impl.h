@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.h 1237 2014-11-28 18:10:22Z serge $
+// $Id: call_manager_impl.h 1241 2014-12-02 19:14:46Z serge $
 
 #ifndef CALL_MANAGER_IMPL_H
 #define CALL_MANAGER_IMPL_H
@@ -43,11 +43,20 @@ class IDialer;
 
 NAMESPACE_CALMAN_START
 
-class Job;
 class ICallManagerCallback;
 
 class CallManagerImpl
 {
+public:
+    enum state_e
+    {
+        UNDEF   = 0,
+        IDLE,
+        WAITING_DIALER_RESP,
+        WAITING_DIALER_FREE,
+        BUSY
+    };
+
 public:
     CallManagerImpl();
     ~CallManagerImpl();
@@ -80,14 +89,19 @@ public:
 private:
     void process_jobs();
     void process_current_job();
+    bool remove_job__( uint32 job_id );
 
     CallPtr get_call_by_job_id( uint32 id );
     CallPtr get_call_by_call_id( uint32 id );
+
+    uint32 get_call_id_by_job_id( uint32 id );
+    uint32 get_job_id_by_call_id( uint32 id );
 
 private:
 
     typedef std::list<uint32>           JobIdQueue;
     typedef std::map<uint32, CallPtr>   MapIdToCall;
+    typedef std::map<uint32, uint32>    MapIdToId;
 
 private:
     mutable boost::mutex        mutex_;
@@ -96,20 +110,16 @@ private:
 
     Config                      cfg_;
 
-    ICallManager::state_e       state_;
+    state_e                     state_;
 
     JobIdQueue                  job_id_queue_;
     MapIdToCall                 map_job_id_to_call_;
-    MapIdToCall                 map_id_to_call_;
+    MapIdToId                   map_call_id_to_job_id_;
 
     dialer::IDialer             * dialer_;
     ICallManagerCallback        * callback_;
 
     uint32                      curr_job_id_;
-
-    uint32                      last_id_;
-
-    CallPtr                     curr_call_;
 };
 
 NAMESPACE_CALMAN_END

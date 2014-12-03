@@ -20,12 +20,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1218 2014-10-28 18:07:17Z serge $
+// $Id: call_manager.h 1241 2014-12-02 19:14:46Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
 
-#include <list>
 #include <boost/thread.hpp>             // boost::mutex
 #include <boost/thread/condition.hpp>   // boost::condition
 
@@ -48,7 +47,7 @@ class AsyncProxy;
 
 NAMESPACE_CALMAN_START
 
-class Job;
+class ICallManagerCallback;
 class CallManagerImpl;
 
 class CallManager: public virtual ICallManager, public virtual dialer::IDialerCallback, public virtual threcon::IControllable
@@ -60,23 +59,26 @@ public:
     bool init( dialer::IDialer * dialer, const Config & cfg );
     void thread_func();
 
+    bool register_callback( ICallManagerCallback * callback );
+
     // ICallManager interface
-    bool insert_job( IJobPtr job );
-    bool remove_job( IJobPtr job );
+    bool insert_job( uint32 job_id, const std::string & party );
+    bool remove_job( uint32 job_id );
 
     // IDialerCallback interface
-    void on_registered( bool b );
-    void on_call_initiate_response( bool is_initiated, uint32 status, dialer::CallIPtr call );
-    void on_call_started();
+    void on_call_initiate_response( uint32 call_id, uint32 status );
+    void on_error_response( uint32 error, const std::string & descr );
+    void on_dial( uint32 call_id );
+    void on_ring( uint32 call_id );
+    void on_call_started( uint32 call_id );
+    void on_call_duration( uint32 call_id, uint32 t );
+    void on_call_end( uint32 call_id, uint32 errorcode );
     void on_ready();
-    void on_error( uint32 errorcode );
+    void on_error( uint32 call_id, uint32 errorcode );
+    void on_fatal_error( uint32 call_id, uint32 errorcode );
 
     // interface threcon::IControllable
     virtual bool shutdown();
-
-private:
-
-    typedef std::list<IJobPtr>  JobList;
 
 private:
     mutable boost::mutex        mutex_;

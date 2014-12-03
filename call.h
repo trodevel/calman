@@ -20,13 +20,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.h 1236 2014-11-26 19:15:35Z serge $
+// $Id: call.h 1241 2014-12-02 19:14:46Z serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
 
 #include <string>                   // std::string
 #include <boost/thread.hpp>         // boost::mutex
+#include "../utils/types.h"         // uint32
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
