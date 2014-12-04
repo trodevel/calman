@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.h 1241 2014-12-02 19:14:46Z serge $
+// $Id: call_manager_impl.h 1243 2014-12-03 17:41:19Z serge $
 
 #ifndef CALL_MANAGER_IMPL_H
 #define CALL_MANAGER_IMPL_H
@@ -101,7 +101,6 @@ private:
 
     typedef std::list<uint32>           JobIdQueue;
     typedef std::map<uint32, CallPtr>   MapIdToCall;
-    typedef std::map<uint32, uint32>    MapIdToId;
 
 private:
     mutable boost::mutex        mutex_;
@@ -114,7 +113,7 @@ private:
 
     JobIdQueue                  job_id_queue_;
     MapIdToCall                 map_job_id_to_call_;
-    MapIdToId                   map_call_id_to_job_id_;
+    MapIdToCall                 map_call_id_to_call_;
 
     dialer::IDialer             * dialer_;
     ICallManagerCallback        * callback_;

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1242 2014-12-02 19:16:35Z serge $
+// $Id: call_manager_impl.cpp 1243 2014-12-03 17:41:19Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -168,9 +168,11 @@ CallPtr CallManagerImpl::get_call_by_job_id( uint32 id )
 
 CallPtr CallManagerImpl::get_call_by_call_id( uint32 id )
 {
-    uint32 job_id   = get_job_id_by_call_id( id );
+    MapIdToCall::iterator it = map_call_id_to_call_.find( id );
 
-    return get_call_by_job_id( job_id );
+    ASSERT( it != map_call_id_to_call_.end() );
+
+    return (*it).second;
 }
 
 uint32 CallManagerImpl::get_call_id_by_job_id( uint32 id )
@@ -180,11 +182,7 @@ uint32 CallManagerImpl::get_call_id_by_job_id( uint32 id )
 
 uint32 CallManagerImpl::get_job_id_by_call_id( uint32 id )
 {
-    MapIdToId::iterator it = map_call_id_to_job_id_.find( id );
-
-    ASSERT( it != map_call_id_to_job_id_.end() );
-
-    return (*it).second;
+    return get_call_by_call_id( id )->get_parent_job_id();
 }
 
 bool CallManagerImpl::insert_job( uint32 job_id, const std::string & party )
@@ -229,11 +227,13 @@ bool CallManagerImpl::remove_job__( uint32 job_id )
             return false;
         }
 
-        dummy_log_debug( MODULENAME, "removed job %u from map", job_id );
-
         CallPtr call = (*it).second;
 
         call_id  = call->get_call_id();
+
+        map_job_id_to_call_.erase( it );
+
+        dummy_log_debug( MODULENAME, "removed job %u from map", job_id );
     }
 
     {
@@ -248,13 +248,17 @@ bool CallManagerImpl::remove_job__( uint32 job_id )
 
     if( call_id != 0 )
     {
-        MapIdToId::iterator it = map_call_id_to_job_id_.find( call_id );
-        if( it == map_call_id_to_job_id_.end() )
+        MapIdToCall::iterator it = map_call_id_to_call_.find( call_id );
+        if( it == map_call_id_to_call_.end() )
         {
-            dummy_log_fatal( MODULENAME, "cannot remove call %u for job %u - it doesn't exist", call_id, job_id );
+            dummy_log_fatal( MODULENAME, "cannot remove call %u for job %u - call doesn't exist", call_id, job_id );
             ASSERT( 0 );
             return false;
         }
+
+        ASSERT( job_id == (*it).second->get_parent_job_id() );
+
+        map_call_id_to_call_.erase( it );
 
         dummy_log_debug( MODULENAME, "removed call %u for job %u from map", call_id, job_id );
     }
@@ -285,7 +289,11 @@ void CallManagerImpl::on_call_initiate_response( uint32 call_id, uint32 status )
 
     ASSERT( curr_job_id_ );    // curr job must not be empty
 
-    ASSERT( map_call_id_to_job_id_.insert( MapIdToId::value_type( call_id, curr_job_id_) ).second );
+    CallPtr call = get_call_by_job_id( curr_job_id_ );
+
+    call->set_call_id( call_id );
+
+    ASSERT( map_call_id_to_call_.insert( MapIdToCall::value_type( call_id, call ) ).second );
 
     state_  = BUSY;
 }
