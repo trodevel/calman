@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager_callback.h 1236 2014-11-26 19:15:35Z serge $
+// $Id: i_call_manager_callback.h 1249 2014-12-04 18:47:44Z serge $
 
 #ifndef CALMAN_I_CALL_MANAGER_CALLBACK_H
 #define CALMAN_I_CALL_MANAGER_CALLBACK_H
@@ -40,6 +40,7 @@ public:
 
     virtual void on_processing_started( uint32 job_id )         = 0;
     virtual void on_call_started( uint32 job_id )               = 0;
+    virtual void on_call_duration( uint32 job_id, uint32 t )    = 0;
     virtual void on_play_started( uint32 job_id )               = 0;
     virtual void on_play_stopped( uint32 job_id )               = 0;
     virtual void on_error( uint32 job_id, uint32 errorcode )    = 0;

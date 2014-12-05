@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1241 2014-12-02 19:14:46Z serge $
+// $Id: call.cpp 1250 2014-12-04 18:48:26Z serge $
 
 #include "call.h"                       // self
 
@@ -130,6 +130,9 @@ void Call::on_call_duration( uint32 t )
     if( state_ == ACTIVE )
     {
         dummy_log_debug( MODULENAME, "on_call_duration: ..." );
+
+        if( callback_ )
+            callback_->on_call_duration( parent_job_id_, t );
     }
     else
     {
