@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1250 2014-12-04 18:48:26Z serge $
+// $Id: call.cpp 1258 2014-12-05 18:44:49Z serge $
 
 #include "call.h"                       // self
 
@@ -38,8 +38,7 @@ Call::Call(
         uint32                  parent_job_id,
         const std::string       & party,
         ICallManagerCallback    * callback ):
-        parent_job_id_( parent_job_id ),
-        call_id_( 0 ),
+        jobman::Job( parent_job_id ),
         party_( party ),
         state_( IDLE ),
         callback_( callback )
@@ -52,27 +51,6 @@ const std::string & Call::get_party() const
     SCOPE_LOCK( mutex_ );
 
     return party_;
-}
-
-uint32 Call::get_parent_job_id() const
-{
-    SCOPE_LOCK( mutex_ );
-
-    return parent_job_id_;
-}
-
-uint32 Call::get_call_id() const
-{
-    SCOPE_LOCK( mutex_ );
-
-    return call_id_;
-}
-
-void Call::set_call_id( uint32 call_id )
-{
-    SCOPE_LOCK( mutex_ );
-
-    call_id_    = call_id;
 }
 
 void Call::on_dial()

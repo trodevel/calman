@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.h 1241 2014-12-02 19:14:46Z serge $
+// $Id: call.h 1258 2014-12-05 18:44:49Z serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -28,6 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <string>                   // std::string
 #include <boost/thread.hpp>         // boost::mutex
 #include "../utils/types.h"         // uint32
+#include "../jobman/job.h"          // Job
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
@@ -35,7 +36,7 @@ NAMESPACE_CALMAN_START
 
 class ICallManagerCallback;
 
-class Call
+class Call: public jobman::Job
 {
 public:
     enum status_e
@@ -54,10 +55,6 @@ public:
         ICallManagerCallback    * callback );
 
     const std::string & get_party() const;
-    uint32 get_parent_job_id() const;
-    uint32 get_call_id() const;
-
-    void set_call_id( uint32 call_id );
 
     // partly interface IDialerCallback
     // not needed: void on_call_initiate_response( uint32 call_id, uint32 status );
@@ -74,10 +71,6 @@ public:
 private:
 
     mutable boost::mutex    mutex_;
-
-    uint32                  parent_job_id_;
-
-    uint32                  call_id_;
 
     std::string             party_;
 
