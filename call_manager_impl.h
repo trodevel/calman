@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.h 1243 2014-12-03 17:41:19Z serge $
+// $Id: call_manager_impl.h 1262 2014-12-11 19:15:58Z serge $
 
 #ifndef CALL_MANAGER_IMPL_H
 #define CALL_MANAGER_IMPL_H
@@ -33,6 +33,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"                         // Config
 #include "../dialer/i_dialer_callback.h"    // IDialerCallback
 #include "../threcon/i_controllable.h"      // IControllable
+#include "../jobman/job_man_t.h"            // JobManT
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
@@ -68,6 +69,8 @@ public:
     // ICallManager interface
     bool insert_job( uint32 job_id, const std::string & party );
     bool remove_job( uint32 job_id );
+    void play_file( uint32 job_id, const std::string & filename );
+    void drop( uint32 job_id );
 
     void wakeup();
 
@@ -91,16 +94,9 @@ private:
     void process_current_job();
     bool remove_job__( uint32 job_id );
 
-    CallPtr get_call_by_job_id( uint32 id );
-    CallPtr get_call_by_call_id( uint32 id );
-
-    uint32 get_call_id_by_job_id( uint32 id );
-    uint32 get_job_id_by_call_id( uint32 id );
-
 private:
 
     typedef std::list<uint32>           JobIdQueue;
-    typedef std::map<uint32, CallPtr>   MapIdToCall;
 
 private:
     mutable boost::mutex        mutex_;
@@ -112,8 +108,8 @@ private:
     state_e                     state_;
 
     JobIdQueue                  job_id_queue_;
-    MapIdToCall                 map_job_id_to_call_;
-    MapIdToCall                 map_call_id_to_call_;
+
+    jobman::JobManT<CallPtr>    jobman_;
 
     dialer::IDialer             * dialer_;
     ICallManagerCallback        * callback_;

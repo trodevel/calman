@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1258 2014-12-05 18:44:49Z serge $
+// $Id: call.cpp 1262 2014-12-11 19:15:58Z serge $
 
 #include "call.h"                       // self
 
@@ -29,6 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
+#include "../dialer/i_dialer.h"         // IDialer
 
 NAMESPACE_CALMAN_START
 
@@ -37,11 +38,13 @@ NAMESPACE_CALMAN_START
 Call::Call(
         uint32                  parent_job_id,
         const std::string       & party,
-        ICallManagerCallback    * callback ):
+        ICallManagerCallback    * callback,
+        dialer::IDialer         * dialer ):
         jobman::Job( parent_job_id ),
         party_( party ),
         state_( IDLE ),
-        callback_( callback )
+        callback_( callback ),
+        dialer_( dialer )
 {
     ASSERT( parent_job_id );
 }
@@ -51,6 +54,19 @@ const std::string & Call::get_party() const
     SCOPE_LOCK( mutex_ );
 
     return party_;
+}
+
+void Call::play_file( const std::string & filename )
+{
+    SCOPE_LOCK( mutex_ );
+
+    dialer_->set_input_file( get_child_job_id(), filename );
+}
+void Call::drop()
+{
+    SCOPE_LOCK( mutex_ );
+
+    dialer_->drop( get_child_job_id() );
 }
 
 void Call::on_dial()

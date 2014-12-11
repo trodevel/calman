@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 1241 2014-12-02 19:14:46Z serge $
+// $Id: i_call_manager.h 1262 2014-12-11 19:15:58Z serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H
@@ -37,8 +37,11 @@ class ICallManager
 public:
     virtual ~ICallManager() {};
 
-    virtual bool insert_job( uint32 job_id, const std::string & party ) = 0;
-    virtual bool remove_job( uint32 job_id )                            = 0;
+    virtual bool insert_job( uint32 job_id, const std::string & party )     = 0;
+    virtual bool remove_job( uint32 job_id )                                = 0;
+
+    virtual void play_file( uint32 job_id, const std::string & filename )   = 0;
+    virtual void drop( uint32 job_id )                                      = 0;
 };
 
 NAMESPACE_CALMAN_END

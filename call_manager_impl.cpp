@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager_impl.cpp 1243 2014-12-03 17:41:19Z serge $
+// $Id: call_manager_impl.cpp 1262 2014-12-11 19:15:58Z serge $
 
 #include "call_manager_impl.h"          // self
 
@@ -150,61 +150,37 @@ void CallManagerImpl::process_current_job()
     if( callback_ )
         callback_->on_processing_started( curr_job_id_ );
 
-    const std::string & party = get_call_by_job_id( curr_job_id_ )->get_party();
+    const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
 
     dialer_->initiate_call( party );
 
     state_  = WAITING_DIALER_RESP;
 }
 
-CallPtr CallManagerImpl::get_call_by_job_id( uint32 id )
-{
-    MapIdToCall::iterator it = map_job_id_to_call_.find( id );
-
-    ASSERT( it != map_job_id_to_call_.end() );
-
-    return (*it).second;
-}
-
-CallPtr CallManagerImpl::get_call_by_call_id( uint32 id )
-{
-    MapIdToCall::iterator it = map_call_id_to_call_.find( id );
-
-    ASSERT( it != map_call_id_to_call_.end() );
-
-    return (*it).second;
-}
-
-uint32 CallManagerImpl::get_call_id_by_job_id( uint32 id )
-{
-    return get_call_by_job_id( id )->get_call_id();
-}
-
-uint32 CallManagerImpl::get_job_id_by_call_id( uint32 id )
-{
-    return get_call_by_call_id( id )->get_parent_job_id();
-}
-
 bool CallManagerImpl::insert_job( uint32 job_id, const std::string & party )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( map_job_id_to_call_.count( job_id ) > 0 )
+    try
     {
-        dummy_log_error( MODULENAME, "insert_job: job %u already exists", job_id );
+        CallPtr call( new Call( job_id, party, callback_, dialer_ ) );
+
+        job_id_queue_.push_back( job_id );
+
+        jobman_.insert_job( job_id, call );
+
+        dummy_log_debug( MODULENAME, "insert_job: inserted job %u", job_id );
+
+        return true;
+    }
+    catch( std::exception & e )
+    {
+        dummy_log_fatal( MODULENAME, "insert_job: error - %s", e.what() );
+
+        ASSERT( 0 );
 
         return false;
     }
-
-    CallPtr call( new Call( job_id, party, callback_ ) );
-
-    job_id_queue_.push_back( job_id );
-
-    ASSERT( map_job_id_to_call_.insert( MapIdToCall::value_type( job_id, call ) ).second );
-
-    dummy_log_debug( MODULENAME, "insert_job: inserted job %u", job_id );
-
-    return true;
 }
 bool CallManagerImpl::remove_job( uint32 job_id )
 {
@@ -216,26 +192,7 @@ bool CallManagerImpl::remove_job__( uint32 job_id )
 {
     // private: no mutex lock
 
-    uint32 call_id  = 0;
-
-    {
-        MapIdToCall::iterator it = map_job_id_to_call_.find( job_id );
-        if( it == map_job_id_to_call_.end() )
-        {
-            dummy_log_fatal( MODULENAME, "cannot remove job %u - it doesn't exist", job_id );
-            ASSERT( 0 );
-            return false;
-        }
-
-        CallPtr call = (*it).second;
-
-        call_id  = call->get_call_id();
-
-        map_job_id_to_call_.erase( it );
-
-        dummy_log_debug( MODULENAME, "removed job %u from map", job_id );
-    }
-
+    try
     {
         JobIdQueue::iterator it = std::find( job_id_queue_.begin(), job_id_queue_.end(), job_id );
         if( it != job_id_queue_.end() )
@@ -244,26 +201,37 @@ bool CallManagerImpl::remove_job__( uint32 job_id )
 
             job_id_queue_.erase( it );
         }
-    }
 
-    if( call_id != 0 )
+        uint32 call_id  = jobman_.get_child_id_by_parent_id( job_id );
+
+        jobman_.remove_job( job_id );
+
+        dummy_log_debug( MODULENAME, "removed job %u from map (call %u)", job_id, call_id );
+
+        return true;
+    }
+    catch( std::exception & e )
     {
-        MapIdToCall::iterator it = map_call_id_to_call_.find( call_id );
-        if( it == map_call_id_to_call_.end() )
-        {
-            dummy_log_fatal( MODULENAME, "cannot remove call %u for job %u - call doesn't exist", call_id, job_id );
-            ASSERT( 0 );
-            return false;
-        }
+        dummy_log_fatal( MODULENAME, "remove_job: error - %s", e.what() );
 
-        ASSERT( job_id == (*it).second->get_parent_job_id() );
+        ASSERT( 0 );
 
-        map_call_id_to_call_.erase( it );
-
-        dummy_log_debug( MODULENAME, "removed call %u for job %u from map", call_id, job_id );
+        return false;
     }
+}
 
-    return true;
+void CallManagerImpl::play_file( uint32 job_id, const std::string & filename )
+{
+    SCOPE_LOCK( mutex_ );
+
+    jobman_.get_job_by_parent_job_id( job_id )->play_file( filename );
+}
+
+void CallManagerImpl::drop( uint32 job_id )
+{
+    SCOPE_LOCK( mutex_ );
+
+    jobman_.get_job_by_parent_job_id( job_id )->drop();
 }
 
 bool CallManagerImpl::shutdown()
@@ -289,11 +257,7 @@ void CallManagerImpl::on_call_initiate_response( uint32 call_id, uint32 status )
 
     ASSERT( curr_job_id_ );    // curr job must not be empty
 
-    CallPtr call = get_call_by_job_id( curr_job_id_ );
-
-    call->set_call_id( call_id );
-
-    ASSERT( map_call_id_to_call_.insert( MapIdToCall::value_type( call_id, call ) ).second );
+    jobman_.assign_child_id( curr_job_id_, call_id );
 
     state_  = BUSY;
 }
@@ -322,9 +286,9 @@ void CallManagerImpl::on_dial( uint32 call_id )
 
     ASSERT( state_ == BUSY );
     ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
 
-    get_call_by_call_id( call_id )->on_dial();
+    jobman_.get_job_by_child_job_id( call_id )->on_dial();
 }
 void CallManagerImpl::on_ring( uint32 call_id )
 {
@@ -332,9 +296,9 @@ void CallManagerImpl::on_ring( uint32 call_id )
 
     ASSERT( state_ == BUSY );
     ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
 
-    get_call_by_call_id( call_id )->on_ring();
+    jobman_.get_job_by_child_job_id( call_id )->on_ring();
 }
 
 void CallManagerImpl::on_call_started( uint32 call_id )
@@ -343,9 +307,9 @@ void CallManagerImpl::on_call_started( uint32 call_id )
 
     ASSERT( state_ == BUSY );
     ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
 
-    get_call_by_call_id( call_id )->on_call_started();
+    jobman_.get_job_by_child_job_id( call_id )->on_call_started();
 }
 
 void CallManagerImpl::on_call_duration( uint32 call_id, uint32 t )
@@ -354,9 +318,9 @@ void CallManagerImpl::on_call_duration( uint32 call_id, uint32 t )
 
     ASSERT( state_ == BUSY );
     ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
 
-    get_call_by_call_id( call_id )->on_call_duration( t );
+    jobman_.get_job_by_child_job_id( call_id )->on_call_duration( t );
 }
 
 void CallManagerImpl::on_call_end( uint32 call_id, uint32 errorcode )
@@ -365,9 +329,9 @@ void CallManagerImpl::on_call_end( uint32 call_id, uint32 errorcode )
 
     ASSERT( state_ == BUSY );
     ASSERT( curr_job_id_ );    // curr job must not be empty
-    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
 
-    get_call_by_call_id( call_id )->on_call_end( errorcode );
+    jobman_.get_job_by_child_job_id( call_id )->on_call_end( errorcode );
 }
 
 void CallManagerImpl::on_ready()
@@ -400,7 +364,7 @@ void CallManagerImpl::on_ready()
 
         ASSERT( curr_job_id_ );    // curr job must not be empty
 
-        const std::string & party = get_call_by_job_id( curr_job_id_ )->get_party();
+        const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
 
         dialer_->initiate_call( party );
 
@@ -418,9 +382,9 @@ void CallManagerImpl::on_error( uint32 call_id, uint32 errorcode )
 
     ASSERT( state_ == BUSY );
     ASSERT( curr_job_id_ );    // curr job must not be empty
-    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
 
-    get_call_by_call_id( call_id )->on_error( errorcode );
+    jobman_.get_job_by_child_job_id( call_id )->on_error( errorcode );
 }
 
 void CallManagerImpl::on_fatal_error( uint32 call_id, uint32 errorcode )
@@ -429,9 +393,9 @@ void CallManagerImpl::on_fatal_error( uint32 call_id, uint32 errorcode )
 
     ASSERT( state_ == BUSY );
     ASSERT( curr_job_id_ );    // curr job must not be empty
-    ASSERT( curr_job_id_ == get_job_id_by_call_id( call_id ) );
+    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
 
-    get_call_by_call_id( call_id )->on_fatal_error( errorcode );
+    jobman_.get_job_by_child_job_id( call_id )->on_fatal_error( errorcode );
 }
 
 NAMESPACE_CALMAN_END

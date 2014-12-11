@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1241 2014-12-02 19:14:46Z serge $
+// $Id: call_manager.h 1262 2014-12-11 19:15:58Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -64,6 +64,8 @@ public:
     // ICallManager interface
     bool insert_job( uint32 job_id, const std::string & party );
     bool remove_job( uint32 job_id );
+    void play_file( uint32 job_id, const std::string & filename );
+    void drop( uint32 job_id );
 
     // IDialerCallback interface
     void on_call_initiate_response( uint32 call_id, uint32 status );

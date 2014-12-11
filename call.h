@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.h 1258 2014-12-05 18:44:49Z serge $
+// $Id: call.h 1262 2014-12-11 19:15:58Z serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -31,6 +31,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../jobman/job.h"          // Job
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
+
+namespace dialer
+{
+class IDialer;
+}
 
 NAMESPACE_CALMAN_START
 
@@ -52,9 +57,14 @@ public:
     Call(
         uint32                  parent_job_id,
         const std::string       & party,
-        ICallManagerCallback    * callback );
+        ICallManagerCallback    * callback,
+        dialer::IDialer         * dialer );
 
     const std::string & get_party() const;
+
+    // partly interface ICallManagerCallback
+    void play_file( const std::string & filename );
+    void drop();
 
     // partly interface IDialerCallback
     // not needed: void on_call_initiate_response( uint32 call_id, uint32 status );
@@ -77,6 +87,7 @@ private:
     status_e                state_;
 
     ICallManagerCallback    * callback_;
+    dialer::IDialer         * dialer_;
 };
 
 typedef boost::shared_ptr< Call >   CallPtr;
