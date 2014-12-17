@@ -20,28 +20,24 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager.h 1262 2014-12-11 19:15:58Z serge $
+// $Id: i_call_manager.h 1267 2014-12-16 19:17:51Z serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H
-
-#include <string>                   // std::string
-#include "../utils/types.h"         // uint32
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
 
+struct CalmanObject;
+
 class ICallManager
 {
 public:
+
     virtual ~ICallManager() {};
 
-    virtual bool insert_job( uint32 job_id, const std::string & party )     = 0;
-    virtual bool remove_job( uint32 job_id )                                = 0;
-
-    virtual void play_file( uint32 job_id, const std::string & filename )   = 0;
-    virtual void drop( uint32 job_id )                                      = 0;
+    void consume( const CalmanObject * req );
 };
 
 NAMESPACE_CALMAN_END

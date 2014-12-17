@@ -20,18 +20,23 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1262 2014-12-11 19:15:58Z serge $
+// $Id: call_manager.h 1271 2014-12-16 19:48:03Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
 
+#include <list>
 #include <boost/thread.hpp>             // boost::mutex
 #include <boost/thread/condition.hpp>   // boost::condition
 
+#include "call.h"                           // Call
 #include "config.h"                         // Config
-#include "i_call_manager.h"                 // IJob
+#include "i_call_manager.h"                 // ICallManager
+#include "objects.h"                        // CalmanInsertJob, ...
 #include "../dialer/i_dialer_callback.h"    // IDialerCallback
 #include "../threcon/i_controllable.h"      // IControllable
+#include "../jobman/job_man_t.h"            // JobManT
+#include "../servt/server_t.h"              // ServerT
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
@@ -40,34 +45,45 @@ namespace dialer
 class IDialer;
 }
 
-namespace asyncp
-{
-class AsyncProxy;
-}
-
 NAMESPACE_CALMAN_START
 
 class ICallManagerCallback;
-class CallManagerImpl;
 
-class CallManager: public virtual ICallManager, public virtual dialer::IDialerCallback, public virtual threcon::IControllable
+class CallManager;
+
+typedef servt::ServerT< const servt::IObject*, CallManager> ServerBase;
+
+class CallManager: public ServerBase,
+    virtual public ICallManager,
+    virtual public dialer::IDialerCallback,
+    virtual public threcon::IControllable
 {
+    friend ServerBase;
+
+public:
+    enum state_e
+    {
+        UNDEF   = 0,
+        IDLE,
+        WAITING_DIALER_RESP,
+        WAITING_DIALER_FREE,
+        BUSY
+    };
+
 public:
     CallManager();
     ~CallManager();
 
     bool init( dialer::IDialer * dialer, const Config & cfg );
-    void thread_func();
 
     bool register_callback( ICallManagerCallback * callback );
 
     // ICallManager interface
-    bool insert_job( uint32 job_id, const std::string & party );
-    bool remove_job( uint32 job_id );
-    void play_file( uint32 job_id, const std::string & filename );
-    void drop( uint32 job_id );
+    bool consume( const CalmanObject* obj );
 
-    // IDialerCallback interface
+    void wakeup();
+
+    // interface IDialerCallback
     void on_call_initiate_response( uint32 call_id, uint32 status );
     void on_error_response( uint32 error, const std::string & descr );
     void on_dial( uint32 call_id );
@@ -80,13 +96,45 @@ public:
     void on_fatal_error( uint32 call_id, uint32 errorcode );
 
     // interface threcon::IControllable
-    virtual bool shutdown();
+    bool shutdown();
+
+private:
+
+    // ICallManager interface
+    void handle( const servt::IObject* req );
+
+    bool handle( const CalmanInsertJob * req );
+    bool handle( const CalmanRemoveJob * req );
+    void handle( const CalmanPlayFile * req );
+    void handle( const CalmanDrop * req );
+
+
+private:
+    void process_jobs();
+    void process_current_job();
+    bool remove_job__( uint32 job_id );
+
+private:
+
+    typedef std::list<uint32>           JobIdQueue;
 
 private:
     mutable boost::mutex        mutex_;
 
-    asyncp::AsyncProxy          * proxy_;
-    CallManagerImpl             * impl_;
+    bool                        must_stop_;
+
+    Config                      cfg_;
+
+    state_e                     state_;
+
+    JobIdQueue                  job_id_queue_;
+
+    jobman::JobManT<CallPtr>    jobman_;
+
+    dialer::IDialer             * dialer_;
+    ICallManagerCallback        * callback_;
+
+    uint32                      curr_job_id_;
 };
 
 NAMESPACE_CALMAN_END

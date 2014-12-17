@@ -20,11 +20,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1262 2014-12-11 19:15:58Z serge $
+// $Id: call.cpp 1267 2014-12-16 19:17:51Z serge $
 
 #include "call.h"                       // self
 
 #include "i_call_manager_callback.h"    // ICallManagerCallback
+#include "object_factory.h"             // create_message_t
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
@@ -109,7 +110,7 @@ void Call::on_call_started()
         state_ = ACTIVE;
 
         if( callback_ )
-            callback_->on_call_started( parent_job_id_ );
+            callback_->consume( create_message_t<CalmanCallStarted>( parent_job_id_ ) );
     }
     else
     {
@@ -126,7 +127,7 @@ void Call::on_call_duration( uint32 t )
         dummy_log_debug( MODULENAME, "on_call_duration: ..." );
 
         if( callback_ )
-            callback_->on_call_duration( parent_job_id_, t );
+            callback_->consume( create_call_duration( parent_job_id_, t ) );
     }
     else
     {
@@ -145,7 +146,7 @@ void Call::on_call_end( uint32 errorcode )
         state_ = DONE;
 
         if( callback_ )
-            callback_->on_finished( parent_job_id_ );
+            callback_->consume( create_message_t<CalmanFinished>( parent_job_id_ ) );
     }
     else
     {
@@ -165,7 +166,7 @@ void Call::on_error( uint32 errorcode )
         state_ = DONE;
 
         if( callback_ )
-            callback_->on_error( parent_job_id_, errorcode );
+            callback_->consume( create_error( parent_job_id_, std::to_string( errorcode ) ) );
     }
     else
     {
@@ -184,7 +185,7 @@ void Call::on_fatal_error( uint32 errorcode )
         state_ = DONE;
 
         if( callback_ )
-            callback_->on_error( parent_job_id_, errorcode );
+            callback_->consume( create_error( parent_job_id_, std::to_string( errorcode ) ) );
     }
     else
     {
