@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1271 2014-12-16 19:48:03Z serge $
+// $Id: call_manager.h 1299 2014-12-30 19:33:19Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -79,21 +79,12 @@ public:
     bool register_callback( ICallManagerCallback * callback );
 
     // ICallManager interface
-    bool consume( const CalmanObject* obj );
-
-    void wakeup();
+    void consume( const CalmanObject* obj );
 
     // interface IDialerCallback
-    void on_call_initiate_response( uint32 call_id, uint32 status );
-    void on_error_response( uint32 error, const std::string & descr );
-    void on_dial( uint32 call_id );
-    void on_ring( uint32 call_id );
-    void on_call_started( uint32 call_id );
-    void on_call_duration( uint32 call_id, uint32 t );
-    void on_call_end( uint32 call_id, uint32 errorcode );
-    void on_ready();
-    void on_error( uint32 call_id, uint32 errorcode );
-    void on_fatal_error( uint32 call_id, uint32 errorcode );
+    void consume( const dialer::DialerCallbackObject * obj );
+
+    void wakeup();
 
     // interface threcon::IControllable
     bool shutdown();
@@ -108,6 +99,20 @@ private:
     void handle( const CalmanPlayFile * req );
     void handle( const CalmanDrop * req );
 
+    // interface IDialerCallback
+    void handle( const dialer::DialerInitiateCallResponse * obj );
+    void handle( const dialer::DialerErrorResponse * obj );
+    void handle( const dialer::DialerDial * obj );
+    void handle( const dialer::DialerRing * obj );
+    void handle( const dialer::DialerConnect * obj );
+    void handle( const dialer::DialerCallDuration * obj );
+    void handle( const dialer::DialerCallEnd * obj );
+    void handle( const dialer::DialerDropResponse * obj );
+    void handle( const dialer::DialerError * obj );
+    void handle( const dialer::DialerFatalError * obj );
+
+    template <class _OBJ>
+    void forward_to_call( const _OBJ * obj );
 
 private:
     void process_jobs();

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1271 2014-12-16 19:48:03Z serge $
+// $Id: objects.h 1295 2014-12-30 19:21:05Z serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -87,7 +87,11 @@ struct CalmanError: public CalmanCallbackObject
     std::string     error;
 };
 
-struct CalmanFinished: public CalmanCallbackObject
+struct CalmanFinishedByOtherParty: public CalmanCallbackObject
+{
+};
+
+struct CalmanDropResponse: public CalmanCallbackObject
 {
 };
 

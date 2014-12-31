@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1270 2014-12-16 19:41:37Z serge $
+// $Id: call_manager.cpp 1301 2014-12-30 19:37:48Z serge $
 
 #include "call_manager.h"               // self
 
@@ -29,6 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../dialer/i_dialer.h"         // IDialer
+#include "../dialer/object_factory.h"   // DialerCallbackCallObject, create_message_t
 #include "../utils/assert.h"            // ASSERT
 
 #include "object_factory.h"             // create_message_t
@@ -99,9 +100,14 @@ bool CallManager::register_callback( ICallManagerCallback * callback )
     return true;
 }
 
-bool CallManager::consume( const CalmanObject* obj )
+void CallManager::consume( const CalmanObject* obj )
 {
-    return ServerBase::consume( obj );
+    ServerBase::consume( obj );
+}
+
+void CallManager::consume( const dialer::DialerCallbackObject* obj )
+{
+    ServerBase::consume( obj );
 }
 
 void CallManager::handle( const servt::IObject* req )
@@ -189,7 +195,7 @@ void CallManager::process_current_job()
 
     const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
 
-    dialer_->initiate_call( party );
+    dialer_->consume( dialer::create_initiate_call_request( party ) );
 
     state_  = WAITING_DIALER_RESP;
 }
@@ -261,14 +267,14 @@ void CallManager::handle( const CalmanPlayFile * req )
 {
     // private: no mutex lock
 
-    jobman_.get_job_by_parent_job_id( req->job_id )->play_file( req->filename );
+    jobman_.get_job_by_parent_job_id( req->job_id )->handle( req );
 }
 
 void CallManager::handle( const CalmanDrop * req )
 {
     // private: no mutex lock
 
-    jobman_.get_job_by_parent_job_id( req->job_id )->drop();
+    jobman_.get_job_by_parent_job_id( req->job_id )->handle( req );
 }
 
 bool CallManager::shutdown()
@@ -283,7 +289,7 @@ bool CallManager::shutdown()
 }
 
 // IDialerCallback interface
-void CallManager::on_call_initiate_response( uint32 call_id, uint32 status )
+void CallManager::handle( const dialer::DialerInitiateCallResponse * obj )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -296,12 +302,12 @@ void CallManager::on_call_initiate_response( uint32 call_id, uint32 status )
 
     ASSERT( curr_job_id_ );    // curr job must not be empty
 
-    jobman_.assign_child_id( curr_job_id_, call_id );
+    jobman_.assign_child_id( curr_job_id_, obj->call_id );
 
     state_  = BUSY;
 }
 
-void CallManager::on_error_response( uint32 error, const std::string & descr )
+void CallManager::handle( const dialer::DialerErrorResponse * obj )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -314,67 +320,49 @@ void CallManager::on_error_response( uint32 error, const std::string & descr )
 
     ASSERT( curr_job_id_ );    // curr job must not be empty
 
-    dummy_log_error( MODULENAME, "on_error_response: dialer is busy, error %u, %s", error, descr.c_str() );
+    dummy_log_error( MODULENAME, "on_error_response: dialer is busy, error %u, %s", obj->errorcode, obj->descr.c_str() );
 
     state_  = WAITING_DIALER_FREE;
 }
 
-void CallManager::on_dial( uint32 call_id )
+template <class _OBJ>
+void CallManager::forward_to_call( const _OBJ * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    // private: no mutex lock
 
     ASSERT( state_ == BUSY );
     ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
+    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( obj->call_id ) );
 
-    jobman_.get_job_by_child_job_id( call_id )->on_dial();
-}
-void CallManager::on_ring( uint32 call_id )
-{
-    SCOPE_LOCK( mutex_ );
-
-    ASSERT( state_ == BUSY );
-    ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
-
-    jobman_.get_job_by_child_job_id( call_id )->on_ring();
+    jobman_.get_job_by_child_job_id( obj->call_id )->handle( obj );
 }
 
-void CallManager::on_call_started( uint32 call_id )
+void CallManager::handle( const dialer::DialerDial * obj )
 {
-    SCOPE_LOCK( mutex_ );
-
-    ASSERT( state_ == BUSY );
-    ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
-
-    jobman_.get_job_by_child_job_id( call_id )->on_call_started();
+    forward_to_call( obj );
 }
-
-void CallManager::on_call_duration( uint32 call_id, uint32 t )
+void CallManager::handle( const dialer::DialerRing * obj )
 {
-    SCOPE_LOCK( mutex_ );
-
-    ASSERT( state_ == BUSY );
-    ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
-
-    jobman_.get_job_by_child_job_id( call_id )->on_call_duration( t );
+    forward_to_call( obj );
 }
-
-void CallManager::on_call_end( uint32 call_id, uint32 errorcode )
+void CallManager::handle( const dialer::DialerConnect * obj )
 {
-    SCOPE_LOCK( mutex_ );
-
-    ASSERT( state_ == BUSY );
-    ASSERT( curr_job_id_ );    // curr job must not be empty
-    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
-
-    jobman_.get_job_by_child_job_id( call_id )->on_call_end( errorcode );
+    forward_to_call( obj );
 }
-
-void CallManager::on_ready()
+void CallManager::handle( const dialer::DialerCallDuration * obj )
 {
+    forward_to_call( obj );
+}
+void CallManager::handle( const dialer::DialerCallEnd * obj )
+{
+    %%%%%%%%% add initiate call %%%%%%%%% ec30
+
+    forward_to_call( obj );
+}
+void CallManager::handle( const dialer::DialerDropResponse * obj )
+{
+    %%%%%%%%% add initiate call %%%%%%%%% ec30
+
     SCOPE_LOCK( mutex_ );
 
     ASSERT( state_ == BUSY || state_ == WAITING_DIALER_FREE );
@@ -405,7 +393,7 @@ void CallManager::on_ready()
 
         const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
 
-        dialer_->initiate_call( party );
+        dialer_->consume( dialer::create_initiate_call_request( party ) );
 
         state_  = WAITING_DIALER_RESP;
     }
@@ -415,26 +403,14 @@ void CallManager::on_ready()
         break;
     }
 }
-void CallManager::on_error( uint32 call_id, uint32 errorcode )
+void CallManager::handle( const dialer::DialerError * obj )
 {
-    SCOPE_LOCK( mutex_ );
-
-    ASSERT( state_ == BUSY );
-    ASSERT( curr_job_id_ );    // curr job must not be empty
-    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
-
-    jobman_.get_job_by_child_job_id( call_id )->on_error( errorcode );
+    forward_to_call( obj );
 }
 
-void CallManager::on_fatal_error( uint32 call_id, uint32 errorcode )
+void CallManager::handle( const dialer::DialerFatalError * obj )
 {
-    SCOPE_LOCK( mutex_ );
-
-    ASSERT( state_ == BUSY );
-    ASSERT( curr_job_id_ );    // curr job must not be empty
-    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( call_id ) );
-
-    jobman_.get_job_by_child_job_id( call_id )->on_fatal_error( errorcode );
+    forward_to_call( obj );
 }
 
 NAMESPACE_CALMAN_END

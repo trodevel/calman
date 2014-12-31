@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.h 1262 2014-12-11 19:15:58Z serge $
+// $Id: call.h 1296 2014-12-30 19:21:23Z serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -29,6 +29,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/thread.hpp>         // boost::mutex
 #include "../utils/types.h"         // uint32
 #include "../jobman/job.h"          // Job
+#include "objects.h"                // CalmanDrop
+#include "../dialer/objects.h"      // DialerDial
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
@@ -50,6 +52,7 @@ public:
         IDLE,
         PREPARING,
         ACTIVE,
+        WAITING_DROP_RESPONSE,
         DONE
     };
 
@@ -63,20 +66,21 @@ public:
     const std::string & get_party() const;
 
     // partly interface ICallManagerCallback
-    void play_file( const std::string & filename );
-    void drop();
+    void handle( const CalmanPlayFile * req );
+    void handle( const CalmanDrop * req );
 
     // partly interface IDialerCallback
-    // not needed: void on_call_initiate_response( uint32 call_id, uint32 status );
-    // not needed: void on_error_response( uint32 error, const std::string & descr );
-    void on_dial();
-    void on_ring();
-    void on_call_started();
-    void on_call_duration( uint32 t );
-    void on_call_end( uint32 errorcode );
-    // not needed: void on_ready();
-    void on_error( uint32 errorcode );
-    void on_fatal_error( uint32 errorcode );
+    // not needed: void handle( const dialer::DialerInitiateCallResponse * obj );
+    // not needed: void handle( const dialer::DialerErrorResponse * obj );
+    void handle( const dialer::DialerDial * obj );
+    void handle( const dialer::DialerRing * obj );
+    void handle( const dialer::DialerConnect * obj );
+    void handle( const dialer::DialerCallDuration * obj );
+    void handle( const dialer::DialerCallEnd * obj );
+    void handle( const dialer::DialerDropResponse * obj );
+    void handle( const dialer::DialerError * obj );
+    void handle( const dialer::DialerFatalError * obj );
+
 
 private:
 

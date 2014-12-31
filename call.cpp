@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1267 2014-12-16 19:17:51Z serge $
+// $Id: call.cpp 1297 2014-12-30 19:27:18Z serge $
 
 #include "call.h"                       // self
 
@@ -31,6 +31,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
 #include "../dialer/i_dialer.h"         // IDialer
+#include "../dialer/object_factory.h"   // create_play_file
 
 NAMESPACE_CALMAN_START
 
@@ -57,141 +58,160 @@ const std::string & Call::get_party() const
     return party_;
 }
 
-void Call::play_file( const std::string & filename )
+void Call::handle( const CalmanPlayFile * req )
 {
     SCOPE_LOCK( mutex_ );
 
-    dialer_->set_input_file( get_child_job_id(), filename );
-}
-void Call::drop()
-{
-    SCOPE_LOCK( mutex_ );
-
-    dialer_->drop( get_child_job_id() );
+    dialer_->consume( dialer::create_play_file( get_child_job_id(), req->filename ) );
 }
 
-void Call::on_dial()
+void Call::handle( const CalmanDrop * req )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == IDLE )
+    if( state_ != ACTIVE )
     {
-        dummy_log_debug( MODULENAME, "on_dial: switched to PREPARING" );
-        state_ = PREPARING;
+        dummy_log_fatal( MODULENAME, "drop: unexpected in state %u", state_ );
+        ASSERT( 0 );
     }
-    else
+
+    dialer_->consume( dialer::create_message_t<dialer::DialerDrop>( get_child_job_id() ) );
+
+    state_  = WAITING_DROP_RESPONSE;
+}
+
+void Call::handle( const dialer::DialerDial * obj )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ != IDLE )
     {
         dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %u", state_ );
         ASSERT( 0 );
     }
+
+    dummy_log_debug( MODULENAME, "on_dial: switched to PREPARING" );
+    state_ = PREPARING;
+
 }
-void Call::on_ring()
+
+void Call::handle( const dialer::DialerRing * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == PREPARING )
-    {
-        dummy_log_debug( MODULENAME, "on_ring: ..." );
-    }
-    else
+    if( state_ != PREPARING )
     {
         dummy_log_fatal( MODULENAME, "on_ring: unexpected in state %u", state_ );
         ASSERT( 0 );
     }
+
+    dummy_log_debug( MODULENAME, "on_ring: ..." );
 }
-void Call::on_call_started()
+
+void Call::handle( const dialer::DialerConnect * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == PREPARING )
-    {
-        dummy_log_debug( MODULENAME, "on_call_started: switched to ACTIVE" );
-
-        state_ = ACTIVE;
-
-        if( callback_ )
-            callback_->consume( create_message_t<CalmanCallStarted>( parent_job_id_ ) );
-    }
-    else
+    if( state_ != PREPARING )
     {
         dummy_log_fatal( MODULENAME, "on_call_started: unexpected in state %u", state_ );
         ASSERT( 0 );
     }
+
+    dummy_log_debug( MODULENAME, "on_call_started: switched to ACTIVE" );
+
+    state_ = ACTIVE;
+
+    if( callback_ )
+        callback_->consume( create_message_t<CalmanCallStarted>( parent_job_id_ ) );
 }
-void Call::on_call_duration( uint32 t )
+
+void Call::handle( const dialer::DialerCallDuration * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == ACTIVE )
-    {
-        dummy_log_debug( MODULENAME, "on_call_duration: ..." );
-
-        if( callback_ )
-            callback_->consume( create_call_duration( parent_job_id_, t ) );
-    }
-    else
+    if( state_ != ACTIVE )
     {
         dummy_log_fatal( MODULENAME, "on_call_started: unexpected in state %u", state_ );
         ASSERT( 0 );
     }
+
+    dummy_log_debug( MODULENAME, "on_call_duration: ..." );
+
+    if( callback_ )
+        callback_->consume( create_call_duration( parent_job_id_, obj->t ) );
 }
-void Call::on_call_end( uint32 errorcode )
+
+void Call::handle( const dialer::DialerCallEnd * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == ACTIVE )
-    {
-        dummy_log_debug( MODULENAME, "on_call_end: code %u, switched to DONE", errorcode );
-
-        state_ = DONE;
-
-        if( callback_ )
-            callback_->consume( create_message_t<CalmanFinished>( parent_job_id_ ) );
-    }
-    else
+    if( state_ != ACTIVE )
     {
         dummy_log_fatal( MODULENAME, "on_call_end: unexpected in state %u", state_ );
         ASSERT( 0 );
     }
+
+    dummy_log_debug( MODULENAME, "on_call_end: code %u, switched to DONE", obj->errorcode );
+
+    state_ = DONE;
+
+    if( callback_ )
+        callback_->consume( create_message_t<CalmanFinishedByOtherParty>( parent_job_id_ ) );
 }
 
-void Call::on_error( uint32 errorcode )
+void Call::handle( const dialer::DialerDropResponse * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == PREPARING || state_ == ACTIVE )
+    if( state_ != WAITING_DROP_RESPONSE )
     {
-        dummy_log_debug( MODULENAME, "on_error: code %u, switched to DONE", errorcode );
-
-        state_ = DONE;
-
-        if( callback_ )
-            callback_->consume( create_error( parent_job_id_, std::to_string( errorcode ) ) );
+        dummy_log_fatal( MODULENAME, "handle: DialerDropResponse: unexpected in state %u", state_ );
+        ASSERT( 0 );
     }
-    else
+
+    dummy_log_debug( MODULENAME, "handle: DialerDropResponse: switched to DONE" );
+
+    state_ = DONE;
+
+    if( callback_ )
+        callback_->consume( create_message_t<CalmanDropResponse>( parent_job_id_ ) );
+}
+
+void Call::handle( const dialer::DialerError * obj )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ != PREPARING && state_ != ACTIVE )
     {
         dummy_log_fatal( MODULENAME, "on_error: unexpected in state %u", state_ );
         ASSERT( 0 );
     }
+
+    dummy_log_debug( MODULENAME, "on_error: code %s, switched to DONE", obj->error.c_str() );
+
+    state_ = DONE;
+
+    if( callback_ )
+        callback_->consume( create_error( parent_job_id_, obj->error ) );
 }
-void Call::on_fatal_error( uint32 errorcode )
+
+void Call::handle( const dialer::DialerFatalError * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ == PREPARING || state_ == ACTIVE )
-    {
-        dummy_log_debug( MODULENAME, "on_fatal_error: code %u, switched to DONE", errorcode );
-
-        state_ = DONE;
-
-        if( callback_ )
-            callback_->consume( create_error( parent_job_id_, std::to_string( errorcode ) ) );
-    }
-    else
+    if( state_ != PREPARING && state_ != ACTIVE )
     {
         dummy_log_fatal( MODULENAME, "on_fatal_error: unexpected in state %u", state_ );
         ASSERT( 0 );
     }
+
+    dummy_log_debug( MODULENAME, "on_fatal_error: code %u, switched to DONE", obj->error.c_str() );
+
+    state_ = DONE;
+
+    if( callback_ )
+        callback_->consume( create_error( parent_job_id_, obj->error ) );
 }
 
 NAMESPACE_CALMAN_END
