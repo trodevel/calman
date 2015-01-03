@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1299 2014-12-30 19:33:19Z serge $
+// $Id: call_manager.h 1310 2015-01-02 18:16:35Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -84,8 +84,6 @@ public:
     // interface IDialerCallback
     void consume( const dialer::DialerCallbackObject * obj );
 
-    void wakeup();
-
     // interface threcon::IControllable
     bool shutdown();
 
@@ -94,29 +92,28 @@ private:
     // ICallManager interface
     void handle( const servt::IObject* req );
 
-    bool handle( const CalmanInsertJob * req );
-    bool handle( const CalmanRemoveJob * req );
+    void handle( const CalmanInsertJob * req );
+    void handle( const CalmanRemoveJob * req );
     void handle( const CalmanPlayFile * req );
     void handle( const CalmanDrop * req );
 
     // interface IDialerCallback
     void handle( const dialer::DialerInitiateCallResponse * obj );
     void handle( const dialer::DialerErrorResponse * obj );
+    void handle( const dialer::DialerDropResponse * obj );
     void handle( const dialer::DialerDial * obj );
     void handle( const dialer::DialerRing * obj );
     void handle( const dialer::DialerConnect * obj );
     void handle( const dialer::DialerCallDuration * obj );
     void handle( const dialer::DialerCallEnd * obj );
-    void handle( const dialer::DialerDropResponse * obj );
     void handle( const dialer::DialerError * obj );
     void handle( const dialer::DialerFatalError * obj );
 
     template <class _OBJ>
     void forward_to_call( const _OBJ * obj );
 
-private:
+    void handle_call_end();
     void process_jobs();
-    void process_current_job();
     bool remove_job__( uint32 job_id );
 
 private:
@@ -125,8 +122,6 @@ private:
 
 private:
     mutable boost::mutex        mutex_;
-
-    bool                        must_stop_;
 
     Config                      cfg_;
 

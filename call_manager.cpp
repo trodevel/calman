@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1301 2014-12-30 19:37:48Z serge $
+// $Id: call_manager.cpp 1310 2015-01-02 18:16:35Z serge $
 
 #include "call_manager.h"               // self
 
@@ -54,7 +54,7 @@ const char* to_c_str( CallManager::state_e s )
 
 CallManager::CallManager():
     ServerBase( this ),
-    must_stop_( false ), state_( UNDEF ), dialer_( 0L ), callback_( nullptr ), curr_job_id_( 0L )
+    state_( UNDEF ), dialer_( 0L ), callback_( nullptr ), curr_job_id_( 0L )
 {
 }
 CallManager::~CallManager()
@@ -130,6 +130,46 @@ void CallManager::handle( const servt::IObject* req )
     {
         handle( dynamic_cast< const CalmanDrop *>( req ) );
     }
+    else if( typeid( *req ) == typeid( dialer::DialerInitiateCallResponse ) )
+    {
+        handle( dynamic_cast< const dialer::DialerInitiateCallResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerErrorResponse ) )
+    {
+        handle( dynamic_cast< const dialer::DialerErrorResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerDropResponse ) )
+    {
+        handle( dynamic_cast< const dialer::DialerDropResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerDial ) )
+    {
+        handle( dynamic_cast< const dialer::DialerDial *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerRing ) )
+    {
+        handle( dynamic_cast< const dialer::DialerRing *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerConnect ) )
+    {
+        handle( dynamic_cast< const dialer::DialerConnect *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerCallDuration ) )
+    {
+        handle( dynamic_cast< const dialer::DialerCallDuration *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerCallEnd ) )
+    {
+        handle( dynamic_cast< const dialer::DialerCallEnd *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerError ) )
+    {
+        handle( dynamic_cast< const dialer::DialerError *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerFatalError ) )
+    {
+        handle( dynamic_cast< const dialer::DialerFatalError *>( req ) );
+    }
     else
     {
         dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %p", (void *) req );
@@ -140,35 +180,52 @@ void CallManager::handle( const servt::IObject* req )
     delete req;
 }
 
-void CallManager::wakeup()
+void CallManager::handle_call_end()
 {
-    dummy_log_trace( MODULENAME, "wakeup" );
-
-    SCOPE_LOCK( mutex_ );
-
-    if( must_stop_ )
-        return;
+    ASSERT( state_ == BUSY || state_ == WAITING_DIALER_FREE );
 
     switch( state_ )
     {
-    case IDLE:
-        process_jobs();
-        break;
 
     case BUSY:
-    case WAITING_DIALER_RESP:
+    {
+        dummy_log_debug( MODULENAME, "handle_call_end: switching into state %s", "IDLE" );
+        state_  = IDLE;
+
+        ASSERT( curr_job_id_ );    // curr job must not be empty
+
+        remove_job__( curr_job_id_ );
+
+        curr_job_id_    = 0;      // as call finished, curr job can be deleted
+
+        process_jobs();
+    }
+    break;
+
     case WAITING_DIALER_FREE:
-        break;
+    {
+        dummy_log_debug( MODULENAME, "handle_call_end: switching into state %s", "WAITING_DIALER_RESP" );
+
+        ASSERT( curr_job_id_ );    // curr job must not be empty
+
+        const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
+
+        dialer_->consume( dialer::create_initiate_call_request( party ) );
+
+        state_  = WAITING_DIALER_RESP;
+    }
+    break;
 
     default:
         break;
     }
-
 }
 
 void CallManager::process_jobs()
 {
     // private: no MUTEX lock needed
+
+    ASSERT( state_ == IDLE ); // just paranoid check
 
     if( job_id_queue_.empty() )
         return;
@@ -178,17 +235,6 @@ void CallManager::process_jobs()
     curr_job_id_ = job_id_queue_.front();
 
     job_id_queue_.pop_front();
-
-    process_current_job();
-}
-
-void CallManager::process_current_job()
-{
-    // private: no MUTEX lock needed
-
-    ASSERT( state_ == IDLE ); // just paranoid check
-
-    ASSERT( curr_job_id_ );  // job must not be empty
 
     if( callback_ )
         callback_->consume( create_message_t<CalmanProcessingStarted>( curr_job_id_ ) );
@@ -200,7 +246,7 @@ void CallManager::process_current_job()
     state_  = WAITING_DIALER_RESP;
 }
 
-bool CallManager::handle( const CalmanInsertJob * req )
+void CallManager::handle( const CalmanInsertJob * req )
 {
     // private: no mutex lock
 
@@ -214,22 +260,21 @@ bool CallManager::handle( const CalmanInsertJob * req )
 
         dummy_log_debug( MODULENAME, "insert_job: inserted job %u", req->job_id );
 
-        return true;
+        if( state_ == IDLE )
+            process_jobs();
     }
     catch( std::exception & e )
     {
         dummy_log_fatal( MODULENAME, "insert_job: error - %s", e.what() );
 
         ASSERT( 0 );
-
-        return false;
     }
 }
-bool CallManager::handle( const CalmanRemoveJob * req )
+void CallManager::handle( const CalmanRemoveJob * req )
 {
     // private: no mutex lock
 
-    return remove_job__( req->job_id );
+    remove_job__( req->job_id );
 }
 bool CallManager::remove_job__( uint32 job_id )
 {
@@ -281,8 +326,6 @@ bool CallManager::shutdown()
 {
     SCOPE_LOCK( mutex_ );
 
-    must_stop_  = true;
-
     ServerBase::shutdown();
 
     return true;
@@ -291,7 +334,7 @@ bool CallManager::shutdown()
 // IDialerCallback interface
 void CallManager::handle( const dialer::DialerInitiateCallResponse * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    // private: no mutex lock
 
     if( state_ != WAITING_DIALER_RESP )
     {
@@ -309,7 +352,7 @@ void CallManager::handle( const dialer::DialerInitiateCallResponse * obj )
 
 void CallManager::handle( const dialer::DialerErrorResponse * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    // private: no mutex lock
 
     if( state_ != WAITING_DIALER_RESP )
     {
@@ -323,6 +366,13 @@ void CallManager::handle( const dialer::DialerErrorResponse * obj )
     dummy_log_error( MODULENAME, "on_error_response: dialer is busy, error %u, %s", obj->errorcode, obj->descr.c_str() );
 
     state_  = WAITING_DIALER_FREE;
+}
+
+void CallManager::handle( const dialer::DialerDropResponse * obj )
+{
+    forward_to_call( obj );
+
+    handle_call_end();
 }
 
 template <class _OBJ>
@@ -355,62 +405,22 @@ void CallManager::handle( const dialer::DialerCallDuration * obj )
 }
 void CallManager::handle( const dialer::DialerCallEnd * obj )
 {
-    %%%%%%%%% add initiate call %%%%%%%%% ec30
-
     forward_to_call( obj );
-}
-void CallManager::handle( const dialer::DialerDropResponse * obj )
-{
-    %%%%%%%%% add initiate call %%%%%%%%% ec30
 
-    SCOPE_LOCK( mutex_ );
-
-    ASSERT( state_ == BUSY || state_ == WAITING_DIALER_FREE );
-
-    switch( state_ )
-    {
-
-    case BUSY:
-    {
-        dummy_log_debug( MODULENAME, "on_ready: switching into state %s", "IDLE" );
-        state_  = IDLE;
-
-        ASSERT( curr_job_id_ );    // curr job must not be empty
-
-        remove_job__( curr_job_id_ );
-
-        curr_job_id_    = 0;      // as call finished, curr job can be deleted
-
-        // TODO add queue check, eb02
-    }
-    break;
-
-    case WAITING_DIALER_FREE:
-    {
-        dummy_log_debug( MODULENAME, "on_ready: switching into state %s", "WAITING_DIALER_RESP" );
-
-        ASSERT( curr_job_id_ );    // curr job must not be empty
-
-        const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
-
-        dialer_->consume( dialer::create_initiate_call_request( party ) );
-
-        state_  = WAITING_DIALER_RESP;
-    }
-    break;
-
-    default:
-        break;
-    }
+    handle_call_end();
 }
 void CallManager::handle( const dialer::DialerError * obj )
 {
     forward_to_call( obj );
+
+    handle_call_end();
 }
 
 void CallManager::handle( const dialer::DialerFatalError * obj )
 {
     forward_to_call( obj );
+
+    handle_call_end();
 }
 
 NAMESPACE_CALMAN_END
