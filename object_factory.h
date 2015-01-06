@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: object_factory.h 1271 2014-12-16 19:48:03Z serge $
+// $Id: object_factory.h 1312 2015-01-05 17:31:50Z serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
@@ -53,11 +53,12 @@ inline CalmanCallDuration *create_call_duration( uint32 job_id, uint32 t )
     return res;
 }
 
-inline CalmanError *create_error( uint32 job_id, const std::string & error )
+inline CalmanFinishedByOtherParty *create_finished_by_other_party( uint32 call_id, uint32 errorcode, const std::string & descr )
 {
-    CalmanError *res = create_message_t<CalmanError>( job_id );
+    CalmanFinishedByOtherParty *res = create_message_t<CalmanFinishedByOtherParty>( call_id );
 
-    res->error = error;
+    res->errorcode  = errorcode;
+    res->descr      = descr;
 
     return res;
 }

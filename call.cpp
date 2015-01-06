@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1297 2014-12-30 19:27:18Z serge $
+// $Id: call.cpp 1312 2015-01-05 17:31:50Z serge $
 
 #include "call.h"                       // self
 
@@ -157,7 +157,7 @@ void Call::handle( const dialer::DialerCallEnd * obj )
     state_ = DONE;
 
     if( callback_ )
-        callback_->consume( create_message_t<CalmanFinishedByOtherParty>( parent_job_id_ ) );
+        callback_->consume( create_finished_by_other_party( parent_job_id_, obj->errorcode, obj->descr ) );
 }
 
 void Call::handle( const dialer::DialerDropResponse * obj )
@@ -178,40 +178,5 @@ void Call::handle( const dialer::DialerDropResponse * obj )
         callback_->consume( create_message_t<CalmanDropResponse>( parent_job_id_ ) );
 }
 
-void Call::handle( const dialer::DialerError * obj )
-{
-    SCOPE_LOCK( mutex_ );
-
-    if( state_ != PREPARING && state_ != ACTIVE )
-    {
-        dummy_log_fatal( MODULENAME, "on_error: unexpected in state %u", state_ );
-        ASSERT( 0 );
-    }
-
-    dummy_log_debug( MODULENAME, "on_error: code %s, switched to DONE", obj->error.c_str() );
-
-    state_ = DONE;
-
-    if( callback_ )
-        callback_->consume( create_error( parent_job_id_, obj->error ) );
-}
-
-void Call::handle( const dialer::DialerFatalError * obj )
-{
-    SCOPE_LOCK( mutex_ );
-
-    if( state_ != PREPARING && state_ != ACTIVE )
-    {
-        dummy_log_fatal( MODULENAME, "on_fatal_error: unexpected in state %u", state_ );
-        ASSERT( 0 );
-    }
-
-    dummy_log_debug( MODULENAME, "on_fatal_error: code %u, switched to DONE", obj->error.c_str() );
-
-    state_ = DONE;
-
-    if( callback_ )
-        callback_->consume( create_error( parent_job_id_, obj->error ) );
-}
 
 NAMESPACE_CALMAN_END

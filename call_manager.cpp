@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1310 2015-01-02 18:16:35Z serge $
+// $Id: call_manager.cpp 1312 2015-01-05 17:31:50Z serge $
 
 #include "call_manager.h"               // self
 
@@ -161,14 +161,6 @@ void CallManager::handle( const servt::IObject* req )
     else if( typeid( *req ) == typeid( dialer::DialerCallEnd ) )
     {
         handle( dynamic_cast< const dialer::DialerCallEnd *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( dialer::DialerError ) )
-    {
-        handle( dynamic_cast< const dialer::DialerError *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( dialer::DialerFatalError ) )
-    {
-        handle( dynamic_cast< const dialer::DialerFatalError *>( req ) );
     }
     else
     {
@@ -404,19 +396,6 @@ void CallManager::handle( const dialer::DialerCallDuration * obj )
     forward_to_call( obj );
 }
 void CallManager::handle( const dialer::DialerCallEnd * obj )
-{
-    forward_to_call( obj );
-
-    handle_call_end();
-}
-void CallManager::handle( const dialer::DialerError * obj )
-{
-    forward_to_call( obj );
-
-    handle_call_end();
-}
-
-void CallManager::handle( const dialer::DialerFatalError * obj )
 {
     forward_to_call( obj );
 

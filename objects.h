@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1295 2014-12-30 19:21:05Z serge $
+// $Id: objects.h 1312 2015-01-05 17:31:50Z serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -82,13 +82,10 @@ struct CalmanPlayStopped: public CalmanCallbackObject
 {
 };
 
-struct CalmanError: public CalmanCallbackObject
-{
-    std::string     error;
-};
-
 struct CalmanFinishedByOtherParty: public CalmanCallbackObject
 {
+    uint32          errorcode;
+    std::string     descr;
 };
 
 struct CalmanDropResponse: public CalmanCallbackObject
