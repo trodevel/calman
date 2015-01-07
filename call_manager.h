@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1314 2015-01-05 17:58:46Z serge $
+// $Id: call_manager.h 1326 2015-01-06 18:10:20Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -107,6 +107,9 @@ private:
     void handle( const dialer::DialerConnect * obj );
     void handle( const dialer::DialerCallDuration * obj );
     void handle( const dialer::DialerCallEnd * obj );
+    void handle( const dialer::DialerPlayStarted * obj );
+    void handle( const dialer::DialerPlayStopped * obj );
+    void handle( const dialer::DialerPlayFailed * obj );
 
     template <class _OBJ>
     void forward_to_call( const _OBJ * obj );

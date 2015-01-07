@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1312 2015-01-05 17:31:50Z serge $
+// $Id: objects.h 1325 2015-01-06 18:09:17Z serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -79,6 +79,10 @@ struct CalmanPlayStarted: public CalmanCallbackObject
 };
 
 struct CalmanPlayStopped: public CalmanCallbackObject
+{
+};
+
+struct CalmanPlayFailed: public CalmanCallbackObject
 {
 };
 

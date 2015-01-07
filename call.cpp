@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1312 2015-01-05 17:31:50Z serge $
+// $Id: call.cpp 1326 2015-01-06 18:10:20Z serge $
 
 #include "call.h"                       // self
 
@@ -176,6 +176,46 @@ void Call::handle( const dialer::DialerDropResponse * obj )
 
     if( callback_ )
         callback_->consume( create_message_t<CalmanDropResponse>( parent_job_id_ ) );
+}
+
+void Call::handle( const dialer::DialerPlayStarted * obj )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ != ACTIVE )
+    {
+        dummy_log_fatal( MODULENAME, "handle: DialerPlayStarted: unexpected in state %u", state_ );
+        ASSERT( 0 );
+        return;
+    }
+
+    callback_->consume( create_message_t<CalmanPlayStarted>( parent_job_id_ ) );
+}
+void Call::handle( const dialer::DialerPlayStopped * obj )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ != ACTIVE )
+    {
+        dummy_log_fatal( MODULENAME, "handle: DialerPlayStopped: unexpected in state %u", state_ );
+        ASSERT( 0 );
+        return;
+    }
+
+    callback_->consume( create_message_t<CalmanPlayStopped>( parent_job_id_ ) );
+}
+void Call::handle( const dialer::DialerPlayFailed * obj )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ != ACTIVE )
+    {
+        dummy_log_fatal( MODULENAME, "handle: DialerPlayFailed: unexpected in state %u", state_ );
+        ASSERT( 0 );
+        return;
+    }
+
+    callback_->consume( create_message_t<CalmanPlayFailed>( parent_job_id_ ) );
 }
 
 

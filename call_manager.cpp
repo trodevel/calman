@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1312 2015-01-05 17:31:50Z serge $
+// $Id: call_manager.cpp 1326 2015-01-06 18:10:20Z serge $
 
 #include "call_manager.h"               // self
 
@@ -161,6 +161,18 @@ void CallManager::handle( const servt::IObject* req )
     else if( typeid( *req ) == typeid( dialer::DialerCallEnd ) )
     {
         handle( dynamic_cast< const dialer::DialerCallEnd *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerPlayStarted ) )
+    {
+        handle( dynamic_cast< const dialer::DialerPlayStarted *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerPlayStopped ) )
+    {
+        handle( dynamic_cast< const dialer::DialerPlayStopped *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( dialer::DialerPlayFailed ) )
+    {
+        handle( dynamic_cast< const dialer::DialerPlayFailed *>( req ) );
     }
     else
     {
@@ -401,5 +413,18 @@ void CallManager::handle( const dialer::DialerCallEnd * obj )
 
     handle_call_end();
 }
+void CallManager::handle( const dialer::DialerPlayStarted * obj )
+{
+    forward_to_call( obj );
+}
+void CallManager::handle( const dialer::DialerPlayStopped * obj )
+{
+    forward_to_call( obj );
+}
+void CallManager::handle( const dialer::DialerPlayFailed * obj )
+{
+    forward_to_call( obj );
+}
+
 
 NAMESPACE_CALMAN_END

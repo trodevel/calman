@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.h 1312 2015-01-05 17:31:50Z serge $
+// $Id: call.h 1326 2015-01-06 18:10:20Z serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -78,6 +78,9 @@ public:
     void handle( const dialer::DialerCallDuration * obj );
     void handle( const dialer::DialerCallEnd * obj );
     void handle( const dialer::DialerDropResponse * obj );
+    void handle( const dialer::DialerPlayStarted * obj );
+    void handle( const dialer::DialerPlayStopped * obj );
+    void handle( const dialer::DialerPlayFailed * obj );
 
 private:
 

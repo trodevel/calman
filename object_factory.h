@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: object_factory.h 1312 2015-01-05 17:31:50Z serge $
+// $Id: object_factory.h 1328 2015-01-06 18:50:54Z serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
@@ -40,6 +40,24 @@ _T *create_message_t( uint32 job_id )
     _T *res = new _T;
 
     init_job_id( res, job_id );
+
+    return res;
+}
+
+inline CalmanInsertJob *create_insert_job( uint32 job_id, const std::string & party )
+{
+    CalmanInsertJob *res = create_message_t<CalmanInsertJob>( job_id );
+
+    res->party  = party;
+
+    return res;
+}
+
+inline CalmanPlayFile *create_play_file( uint32 job_id, const std::string & filename )
+{
+    CalmanPlayFile *res = create_message_t<CalmanPlayFile>( job_id );
+
+    res->filename   = filename;
 
     return res;
 }
