@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: i_call_manager_callback.h 1267 2014-12-16 19:17:51Z serge $
+// $Id: i_call_manager_callback.h 1346 2015-01-08 18:50:31Z serge $
 
 #ifndef CALMAN_I_CALL_MANAGER_CALLBACK_H
 #define CALMAN_I_CALL_MANAGER_CALLBACK_H
@@ -37,7 +37,7 @@ public:
 
     virtual ~ICallManagerCallback() {};
 
-    void consume( const CalmanCallbackObject * req );
+    virtual void consume( const CalmanCallbackObject * req )    = 0;
 };
 
 NAMESPACE_CALMAN_END

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1326 2015-01-06 18:10:20Z serge $
+// $Id: call_manager.cpp 1353 2015-01-08 19:25:02Z serge $
 
 #include "call_manager.h"               // self
 
@@ -43,18 +43,18 @@ const char* to_c_str( CallManager::state_e s )
 {
     static const char *vals[]=
     {
-            "UNDEF", "IDLE", "WAITING_DIALER_RESP", "WAITING_DIALER_FREE", "BUSY"
+            "IDLE", "WAITING_DIALER_RESP", "WAITING_DIALER_FREE", "BUSY"
     };
 
-    if( s < CallManager::UNDEF || s > CallManager::BUSY )
-        return vals[0];
+    if( s < CallManager::IDLE || s > CallManager::BUSY )
+        return "???";
 
     return vals[ (int) s ];
 }
 
 CallManager::CallManager():
     ServerBase( this ),
-    state_( UNDEF ), dialer_( 0L ), callback_( nullptr ), curr_job_id_( 0L )
+    state_( IDLE ), dialer_( 0L ), callback_( nullptr ), curr_job_id_( 0L )
 {
 }
 CallManager::~CallManager()

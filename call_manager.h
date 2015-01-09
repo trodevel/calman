@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.h 1326 2015-01-06 18:10:20Z serge $
+// $Id: call_manager.h 1353 2015-01-08 19:25:02Z serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -63,8 +63,7 @@ class CallManager: public ServerBase,
 public:
     enum state_e
     {
-        UNDEF   = 0,
-        IDLE,
+        IDLE    = 0,
         WAITING_DIALER_RESP,
         WAITING_DIALER_FREE,
         BUSY
