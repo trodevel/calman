@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1326 2015-01-06 18:10:20Z serge $
+// $Id: call.cpp 1367 2015-01-12 18:26:19Z serge $
 
 #include "call.h"                       // self
 
@@ -84,10 +84,16 @@ void Call::handle( const dialer::DialerDial * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != IDLE )
+    if( state_ != IDLE && state_ != PREPARING )
     {
         dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %u", state_ );
         ASSERT( 0 );
+    }
+
+    if( state_ == PREPARING )
+    {
+        dummy_log_debug( MODULENAME, "on_dial: ignored in state PREPARING" );
+        return;
     }
 
     dummy_log_debug( MODULENAME, "on_dial: switched to PREPARING" );
