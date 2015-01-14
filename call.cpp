@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1367 2015-01-12 18:26:19Z serge $
+// $Id: call.cpp 1380 2015-01-13 19:34:01Z serge $
 
 #include "call.h"                       // self
 
@@ -36,6 +36,24 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 NAMESPACE_CALMAN_START
 
 #define MODULENAME      "Call"
+
+const char* to_c_str( Call::status_e s )
+{
+    static const char *vals[]=
+    {
+            "UNDEF",
+            "IDLE",
+            "PREPARING",
+            "ACTIVE",
+            "WAITING_DROP_RESPONSE",
+            "DONE"
+    };
+
+    if( s < Call::UNDEF || s > Call::DONE )
+        return "???";
+
+    return vals[ (int) s ];
+}
 
 Call::Call(
         uint32                  parent_job_id,
@@ -71,7 +89,7 @@ void Call::handle( const CalmanDrop * req )
 
     if( state_ != ACTIVE )
     {
-        dummy_log_fatal( MODULENAME, "drop: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "drop: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 
@@ -86,14 +104,8 @@ void Call::handle( const dialer::DialerDial * obj )
 
     if( state_ != IDLE && state_ != PREPARING )
     {
-        dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
-    }
-
-    if( state_ == PREPARING )
-    {
-        dummy_log_debug( MODULENAME, "on_dial: ignored in state PREPARING" );
-        return;
     }
 
     dummy_log_debug( MODULENAME, "on_dial: switched to PREPARING" );
@@ -107,7 +119,7 @@ void Call::handle( const dialer::DialerRing * obj )
 
     if( state_ != PREPARING )
     {
-        dummy_log_fatal( MODULENAME, "on_ring: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_ring: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 
@@ -120,7 +132,7 @@ void Call::handle( const dialer::DialerConnect * obj )
 
     if( state_ != PREPARING )
     {
-        dummy_log_fatal( MODULENAME, "on_call_started: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_call_started: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 
@@ -138,7 +150,7 @@ void Call::handle( const dialer::DialerCallDuration * obj )
 
     if( state_ != ACTIVE )
     {
-        dummy_log_fatal( MODULENAME, "on_call_started: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_call_started: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 
@@ -152,9 +164,9 @@ void Call::handle( const dialer::DialerCallEnd * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != ACTIVE )
+    if( state_ != ACTIVE && state_ != PREPARING )
     {
-        dummy_log_fatal( MODULENAME, "on_call_end: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "on_call_end: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 
@@ -172,7 +184,7 @@ void Call::handle( const dialer::DialerDropResponse * obj )
 
     if( state_ != WAITING_DROP_RESPONSE )
     {
-        dummy_log_fatal( MODULENAME, "handle: DialerDropResponse: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "handle: DialerDropResponse: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 
@@ -190,7 +202,7 @@ void Call::handle( const dialer::DialerPlayStarted * obj )
 
     if( state_ != ACTIVE )
     {
-        dummy_log_fatal( MODULENAME, "handle: DialerPlayStarted: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "handle: DialerPlayStarted: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
         return;
     }
@@ -203,7 +215,7 @@ void Call::handle( const dialer::DialerPlayStopped * obj )
 
     if( state_ != ACTIVE )
     {
-        dummy_log_fatal( MODULENAME, "handle: DialerPlayStopped: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "handle: DialerPlayStopped: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
         return;
     }
@@ -216,7 +228,7 @@ void Call::handle( const dialer::DialerPlayFailed * obj )
 
     if( state_ != ACTIVE )
     {
-        dummy_log_fatal( MODULENAME, "handle: DialerPlayFailed: unexpected in state %u", state_ );
+        dummy_log_fatal( MODULENAME, "handle: DialerPlayFailed: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
         return;
     }
