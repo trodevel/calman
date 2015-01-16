@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call_manager.cpp 1353 2015-01-08 19:25:02Z serge $
+// $Id: call_manager.cpp 1389 2015-01-15 18:01:51Z serge $
 
 #include "call_manager.h"               // self
 
@@ -193,8 +193,8 @@ void CallManager::handle_call_end()
 
     case BUSY:
     {
-        dummy_log_debug( MODULENAME, "handle_call_end: switching into state %s", "IDLE" );
         state_  = IDLE;
+        dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 
         ASSERT( curr_job_id_ );    // curr job must not be empty
 
@@ -208,8 +208,6 @@ void CallManager::handle_call_end()
 
     case WAITING_DIALER_FREE:
     {
-        dummy_log_debug( MODULENAME, "handle_call_end: switching into state %s", "WAITING_DIALER_RESP" );
-
         ASSERT( curr_job_id_ );    // curr job must not be empty
 
         const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
@@ -217,6 +215,8 @@ void CallManager::handle_call_end()
         dialer_->consume( dialer::create_initiate_call_request( party ) );
 
         state_  = WAITING_DIALER_RESP;
+
+        dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
     }
     break;
 
@@ -352,6 +352,8 @@ void CallManager::handle( const dialer::DialerInitiateCallResponse * obj )
     jobman_.assign_child_id( curr_job_id_, obj->call_id );
 
     state_  = BUSY;
+
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 }
 
 void CallManager::handle( const dialer::DialerErrorResponse * obj )
@@ -370,6 +372,8 @@ void CallManager::handle( const dialer::DialerErrorResponse * obj )
     dummy_log_error( MODULENAME, "on_error_response: dialer is busy, error %u, %s", obj->errorcode, obj->descr.c_str() );
 
     state_  = WAITING_DIALER_FREE;
+
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 }
 
 void CallManager::handle( const dialer::DialerDropResponse * obj )

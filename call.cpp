@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: call.cpp 1380 2015-01-13 19:34:01Z serge $
+// $Id: call.cpp 1389 2015-01-15 18:01:51Z serge $
 
 #include "call.h"                       // self
 
@@ -108,8 +108,8 @@ void Call::handle( const dialer::DialerDial * obj )
         ASSERT( 0 );
     }
 
-    dummy_log_debug( MODULENAME, "on_dial: switched to PREPARING" );
     state_ = PREPARING;
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 
 }
 
@@ -136,9 +136,9 @@ void Call::handle( const dialer::DialerConnect * obj )
         ASSERT( 0 );
     }
 
-    dummy_log_debug( MODULENAME, "on_call_started: switched to ACTIVE" );
-
     state_ = ACTIVE;
+
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 
     if( callback_ )
         callback_->consume( create_message_t<CalmanCallStarted>( parent_job_id_ ) );
@@ -170,9 +170,11 @@ void Call::handle( const dialer::DialerCallEnd * obj )
         ASSERT( 0 );
     }
 
-    dummy_log_debug( MODULENAME, "on_call_end: code %u, switched to DONE", obj->errorcode );
+    dummy_log_debug( MODULENAME, "on_call_end: code %u", obj->errorcode );
 
     state_ = DONE;
+
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 
     if( callback_ )
         callback_->consume( create_finished_by_other_party( parent_job_id_, obj->errorcode, obj->descr ) );
@@ -188,9 +190,9 @@ void Call::handle( const dialer::DialerDropResponse * obj )
         ASSERT( 0 );
     }
 
-    dummy_log_debug( MODULENAME, "handle: DialerDropResponse: switched to DONE" );
-
     state_ = DONE;
+
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 
     if( callback_ )
         callback_->consume( create_message_t<CalmanDropResponse>( parent_job_id_ ) );
