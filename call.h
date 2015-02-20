@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1496 $ $Date:: 2015-02-18 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -50,7 +50,7 @@ public:
     {
         UNDEF,
         IDLE,
-        PREPARING,
+        DIALLING,
         ACTIVE,
         WAITING_DROP_RESPONSE,
         DONE
@@ -71,7 +71,7 @@ public:
 
     // partly interface IDialerCallback
     // not needed: void handle( const dialer::DialerInitiateCallResponse * obj );
-    // not needed: void handle( const dialer::DialerErrorResponse * obj );
+    void handle( const dialer::DialerErrorResponse * obj );
     void handle( const dialer::DialerDial * obj );
     void handle( const dialer::DialerRing * obj );
     void handle( const dialer::DialerConnect * obj );

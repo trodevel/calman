@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1497 $ $Date:: 2015-02-18 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -138,6 +138,10 @@ void CallManager::handle( const servt::IObject* req )
     {
         handle( dynamic_cast< const dialer::DialerErrorResponse *>( req ) );
     }
+    else if( typeid( *req ) == typeid( dialer::DialerRejectResponse ) )
+    {
+        handle( dynamic_cast< const dialer::DialerRejectResponse *>( req ) );
+    }
     else if( typeid( *req ) == typeid( dialer::DialerDropResponse ) )
     {
         handle( dynamic_cast< const dialer::DialerDropResponse *>( req ) );
@@ -186,11 +190,12 @@ void CallManager::handle( const servt::IObject* req )
 
 void CallManager::handle_call_end()
 {
-    ASSERT( state_ == BUSY || state_ == WAITING_DIALER_FREE );
+    ASSERT( state_ == BUSY || state_ == WAITING_DIALER_RESP || state_ == WAITING_DIALER_FREE );
 
     switch( state_ )
     {
 
+    case WAITING_DIALER_RESP:
     case BUSY:
     {
         state_  = IDLE;
@@ -248,6 +253,8 @@ void CallManager::process_jobs()
     dialer_->consume( dialer::create_initiate_call_request( party ) );
 
     state_  = WAITING_DIALER_RESP;
+
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 }
 
 void CallManager::handle( const CalmanInsertJob * req )
@@ -356,6 +363,26 @@ void CallManager::handle( const dialer::DialerInitiateCallResponse * obj )
     dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 }
 
+void CallManager::handle( const dialer::DialerRejectResponse * obj )
+{
+    // private: no mutex lock
+
+    if( state_ != WAITING_DIALER_RESP )
+    {
+        dummy_log_fatal( MODULENAME, "on_reject_response: unexpected in state %s", to_c_str( state_ ) );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( curr_job_id_ );    // curr job must not be empty
+
+    dummy_log_error( MODULENAME, "on_reject_response: dialer is busy, error %u, %s", obj->errorcode, obj->descr.c_str() );
+
+    state_  = WAITING_DIALER_FREE;
+
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
+}
+
 void CallManager::handle( const dialer::DialerErrorResponse * obj )
 {
     // private: no mutex lock
@@ -369,11 +396,11 @@ void CallManager::handle( const dialer::DialerErrorResponse * obj )
 
     ASSERT( curr_job_id_ );    // curr job must not be empty
 
-    dummy_log_error( MODULENAME, "on_error_response: dialer is busy, error %u, %s", obj->errorcode, obj->descr.c_str() );
+    dummy_log_error( MODULENAME, "on_error_response: cannot dial, error %u, %s", obj->errorcode, obj->descr.c_str() );
 
-    state_  = WAITING_DIALER_FREE;
+    jobman_.get_job_by_parent_job_id( curr_job_id_ )->handle( obj );
 
-    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
+    handle_call_end();
 }
 
 void CallManager::handle( const dialer::DialerDropResponse * obj )

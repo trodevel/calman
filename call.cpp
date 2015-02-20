@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1496 $ $Date:: 2015-02-18 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -43,7 +43,7 @@ const char* to_c_str( Call::status_e s )
     {
             "UNDEF",
             "IDLE",
-            "PREPARING",
+            "DIALLING",
             "ACTIVE",
             "WAITING_DROP_RESPONSE",
             "DONE"
@@ -98,17 +98,34 @@ void Call::handle( const CalmanDrop * req )
     state_  = WAITING_DROP_RESPONSE;
 }
 
+void Call::handle( const dialer::DialerErrorResponse * obj )
+{
+    SCOPE_LOCK( mutex_ );
+
+    if( state_ != IDLE )
+    {
+        dummy_log_fatal( MODULENAME, "handle DialerErrorResponse: unexpected in state %s", to_c_str( state_ ) );
+        ASSERT( 0 );
+    }
+
+    state_ = DONE;
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
+
+    if( callback_ )
+        callback_->consume( create_finished_by_other_party( parent_job_id_, obj->errorcode, obj->descr ) );
+}
+
 void Call::handle( const dialer::DialerDial * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != IDLE && state_ != PREPARING )
+    if( state_ != IDLE && state_ != DIALLING )
     {
         dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 
-    state_ = PREPARING;
+    state_ = DIALLING;
     dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 
 }
@@ -117,7 +134,7 @@ void Call::handle( const dialer::DialerRing * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != PREPARING )
+    if( state_ != DIALLING )
     {
         dummy_log_fatal( MODULENAME, "on_ring: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
@@ -130,7 +147,7 @@ void Call::handle( const dialer::DialerConnect * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != PREPARING )
+    if( state_ != DIALLING )
     {
         dummy_log_fatal( MODULENAME, "on_call_started: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
@@ -164,7 +181,7 @@ void Call::handle( const dialer::DialerCallEnd * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != ACTIVE && state_ != PREPARING )
+    if( state_ != ACTIVE && state_ != DIALLING )
     {
         dummy_log_fatal( MODULENAME, "on_call_end: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
