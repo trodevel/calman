@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1496 $ $Date:: 2015-02-18 #$ $Author: serge $
+// $Revision: 1545 $ $Date:: 2015-02-26 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -232,11 +232,16 @@ void Call::handle( const dialer::DialerPlayStopped * obj )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( state_ != ACTIVE )
+    if( state_ != ACTIVE && state_ != WAITING_DROP_RESPONSE )
     {
         dummy_log_fatal( MODULENAME, "handle: DialerPlayStopped: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
         return;
+    }
+
+    if( state_ == WAITING_DROP_RESPONSE )
+    {
+        dummy_log_warn( MODULENAME, "handle: DialerPlayStopped: arrived too late, ignored in state %s", to_c_str( state_ ) );
     }
 
     callback_->consume( create_message_t<CalmanPlayStopped>( parent_job_id_ ) );
