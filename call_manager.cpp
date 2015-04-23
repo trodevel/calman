@@ -20,13 +20,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1497 $ $Date:: 2015-02-18 #$ $Author: serge $
+// $Revision: 1723 $ $Date:: 2015-04-23 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
-#include <boost/thread.hpp>             // boost::this_thread
-
-#include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../dialer/i_dialer.h"         // IDialer
 #include "../dialer/object_factory.h"   // DialerCallbackCallObject, create_message_t
@@ -59,7 +57,7 @@ CallManager::CallManager():
 }
 CallManager::~CallManager()
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     job_id_queue_.clear();
 
@@ -74,7 +72,7 @@ bool CallManager::init( dialer::IDialer * dialer, const Config & cfg )
     if( dialer == 0L )
         return false;
 
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( dialer_ != 0L )
         return false;
@@ -90,7 +88,7 @@ bool CallManager::register_callback( ICallManagerCallback * callback )
     if( callback == 0L )
         return false;
 
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( callback_ != 0L )
         return false;
@@ -112,7 +110,7 @@ void CallManager::consume( const dialer::DialerCallbackObject* obj )
 
 void CallManager::handle( const servt::IObject* req )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( typeid( *req ) == typeid( CalmanInsertJob ) )
     {
@@ -335,7 +333,7 @@ void CallManager::handle( const CalmanDrop * req )
 
 bool CallManager::shutdown()
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     ServerBase::shutdown();
 

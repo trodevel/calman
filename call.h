@@ -20,13 +20,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1496 $ $Date:: 2015-02-18 #$ $Author: serge $
+// $Revision: 1723 $ $Date:: 2015-04-23 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
 
 #include <string>                   // std::string
-#include <boost/thread.hpp>         // boost::mutex
+#include <mutex>                    // std::mutex
+#include <memory>                   // std::shared_ptr
 #include "../utils/types.h"         // uint32
 #include "../jobman/job.h"          // Job
 #include "objects.h"                // CalmanDrop
@@ -84,7 +85,7 @@ public:
 
 private:
 
-    mutable boost::mutex    mutex_;
+    mutable std::mutex      mutex_;
 
     std::string             party_;
 
@@ -94,7 +95,7 @@ private:
     dialer::IDialer         * dialer_;
 };
 
-typedef boost::shared_ptr< Call >   CallPtr;
+typedef std::shared_ptr< Call >   CallPtr;
 
 NAMESPACE_CALMAN_END
 

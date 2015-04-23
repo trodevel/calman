@@ -20,14 +20,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1497 $ $Date:: 2015-02-18 #$ $Author: serge $
+// $Revision: 1723 $ $Date:: 2015-04-23 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
 
 #include <list>
-#include <boost/thread.hpp>             // boost::mutex
-#include <boost/thread/condition.hpp>   // boost::condition
+#include <mutex>                            // std::mutex
 
 #include "call.h"                           // Call
 #include "config.h"                         // Config
@@ -123,7 +122,7 @@ private:
     typedef std::list<uint32>           JobIdQueue;
 
 private:
-    mutable boost::mutex        mutex_;
+    mutable std::mutex          mutex_;
 
     Config                      cfg_;
 

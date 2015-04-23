@@ -20,14 +20,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1545 $ $Date:: 2015-02-26 #$ $Author: serge $
+// $Revision: 1723 $ $Date:: 2015-04-23 #$ $Author: serge $
 
 #include "call.h"                       // self
 
 #include "i_call_manager_callback.h"    // ICallManagerCallback
 #include "object_factory.h"             // create_message_t
 
-#include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
 #include "../dialer/i_dialer.h"         // IDialer
@@ -71,21 +71,21 @@ Call::Call(
 
 const std::string & Call::get_party() const
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     return party_;
 }
 
 void Call::handle( const CalmanPlayFile * req )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     dialer_->consume( dialer::create_play_file( get_child_job_id(), req->filename ) );
 }
 
 void Call::handle( const CalmanDrop * req )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != ACTIVE )
     {
@@ -100,7 +100,7 @@ void Call::handle( const CalmanDrop * req )
 
 void Call::handle( const dialer::DialerErrorResponse * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != IDLE )
     {
@@ -117,7 +117,7 @@ void Call::handle( const dialer::DialerErrorResponse * obj )
 
 void Call::handle( const dialer::DialerDial * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != IDLE && state_ != DIALLING )
     {
@@ -132,7 +132,7 @@ void Call::handle( const dialer::DialerDial * obj )
 
 void Call::handle( const dialer::DialerRing * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != DIALLING )
     {
@@ -145,7 +145,7 @@ void Call::handle( const dialer::DialerRing * obj )
 
 void Call::handle( const dialer::DialerConnect * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != DIALLING )
     {
@@ -163,7 +163,7 @@ void Call::handle( const dialer::DialerConnect * obj )
 
 void Call::handle( const dialer::DialerCallDuration * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != ACTIVE )
     {
@@ -179,7 +179,7 @@ void Call::handle( const dialer::DialerCallDuration * obj )
 
 void Call::handle( const dialer::DialerCallEnd * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != ACTIVE && state_ != DIALLING )
     {
@@ -199,7 +199,7 @@ void Call::handle( const dialer::DialerCallEnd * obj )
 
 void Call::handle( const dialer::DialerDropResponse * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != WAITING_DROP_RESPONSE )
     {
@@ -217,7 +217,7 @@ void Call::handle( const dialer::DialerDropResponse * obj )
 
 void Call::handle( const dialer::DialerPlayStarted * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != ACTIVE )
     {
@@ -230,7 +230,7 @@ void Call::handle( const dialer::DialerPlayStarted * obj )
 }
 void Call::handle( const dialer::DialerPlayStopped * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != ACTIVE && state_ != WAITING_DROP_RESPONSE )
     {
@@ -248,7 +248,7 @@ void Call::handle( const dialer::DialerPlayStopped * obj )
 }
 void Call::handle( const dialer::DialerPlayFailed * obj )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != ACTIVE )
     {
