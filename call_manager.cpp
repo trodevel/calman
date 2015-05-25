@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1723 $ $Date:: 2015-04-23 #$ $Author: serge $
+// $Revision: 1771 $ $Date:: 2015-05-21 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -333,6 +333,8 @@ void CallManager::handle( const CalmanDrop * req )
 
 bool CallManager::shutdown()
 {
+    dummy_log_debug( MODULENAME, "shutdown()" );
+
     MUTEX_SCOPE_LOCK( mutex_ );
 
     ServerBase::shutdown();
