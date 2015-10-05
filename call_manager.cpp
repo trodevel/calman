@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1771 $ $Date:: 2015-05-21 #$ $Author: serge $
+// $Revision: 2675 $ $Date:: 2015-10-05 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -79,6 +79,8 @@ bool CallManager::init( dialer::IDialer * dialer, const Config & cfg )
 
     dialer_ = dialer;
     cfg_    = cfg;
+
+    dummy_log_debug( MODULENAME, "inited" );
 
     return true;
 }
