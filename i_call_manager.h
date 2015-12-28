@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 3063 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #ifndef I_CALMAN_H
 #define I_CALMAN_H
@@ -29,7 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_CALMAN_START
 
-struct CalmanObject;
+struct Object;
 
 class ICallManager
 {
@@ -37,7 +37,7 @@ public:
 
     virtual ~ICallManager() {};
 
-    virtual void consume( const CalmanObject * req )    = 0;
+    virtual void consume( const Object * req )    = 0;
 };
 
 NAMESPACE_CALMAN_END

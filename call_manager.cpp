@@ -20,14 +20,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 2675 $ $Date:: 2015-10-05 #$ $Author: serge $
+// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
-#include "../dialer/i_dialer.h"         // IDialer
-#include "../dialer/object_factory.h"   // DialerCallbackCallObject, create_message_t
+#include "../voip_io/i_voip_service.h"  // IVoipService
+#include "../voip_io/object_factory.h"  // create_message_t
 #include "../utils/assert.h"            // ASSERT
 
 #include "object_factory.h"             // create_message_t
@@ -41,7 +41,7 @@ const char* to_c_str( CallManager::state_e s )
 {
     static const char *vals[]=
     {
-            "IDLE", "WAITING_DIALER_RESP", "WAITING_DIALER_FREE", "BUSY"
+            "IDLE", "BUSY"
     };
 
     if( s < CallManager::IDLE || s > CallManager::BUSY )
@@ -52,32 +52,32 @@ const char* to_c_str( CallManager::state_e s )
 
 CallManager::CallManager():
     ServerBase( this ),
-    state_( IDLE ), dialer_( 0L ), callback_( nullptr ), curr_job_id_( 0L )
+    state_( IDLE ), voips_( nullptr ), callback_( nullptr ), curr_job_( 0L )
 {
 }
 CallManager::~CallManager()
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    job_id_queue_.clear();
+    job_queue_.clear();
 
-    if( curr_job_id_ )
+    if( curr_job_ )
     {
-        curr_job_id_   = 0L;
+        curr_job_   = 0L;
     }
 }
 
-bool CallManager::init( dialer::IDialer * dialer, const Config & cfg )
+bool CallManager::init( voip_service::IVoipService * voips, const Config & cfg )
 {
-    if( dialer == 0L )
+    if( voips == 0L )
         return false;
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( dialer_ != 0L )
+    if( voips_ != 0L )
         return false;
 
-    dialer_ = dialer;
+    voips_  = voips;
     cfg_    = cfg;
 
     dummy_log_debug( MODULENAME, "inited" );
@@ -100,12 +100,12 @@ bool CallManager::register_callback( ICallManagerCallback * callback )
     return true;
 }
 
-void CallManager::consume( const CalmanObject* obj )
+void CallManager::consume( const Object* obj )
 {
     ServerBase::consume( obj );
 }
 
-void CallManager::consume( const dialer::DialerCallbackObject* obj )
+void CallManager::consume( const voip_service::CallbackObject* obj )
 {
     ServerBase::consume( obj );
 }
@@ -114,69 +114,65 @@ void CallManager::handle( const servt::IObject* req )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( typeid( *req ) == typeid( CalmanInsertJob ) )
+    if( typeid( *req ) == typeid( InitiateCall ) )
     {
-        handle( dynamic_cast< const CalmanInsertJob *>( req ) );
+        handle( dynamic_cast< const InitiateCall *>( req ) );
     }
-    else if( typeid( *req ) == typeid( CalmanRemoveJob ) )
+    else if( typeid( *req ) == typeid( CancelCall ) )
     {
-        handle( dynamic_cast< const CalmanRemoveJob *>( req ) );
+        handle( dynamic_cast< const CancelCall *>( req ) );
     }
-    else if( typeid( *req ) == typeid( CalmanPlayFile ) )
+    else if( typeid( *req ) == typeid( PlayFileRequest ) )
     {
-        handle( dynamic_cast< const CalmanPlayFile *>( req ) );
+        handle( dynamic_cast< const PlayFileRequest *>( req ) );
     }
-    else if( typeid( *req ) == typeid( CalmanDrop ) )
+    else if( typeid( *req ) == typeid( DropRequest ) )
     {
-        handle( dynamic_cast< const CalmanDrop *>( req ) );
+        handle( dynamic_cast< const DropRequest *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerInitiateCallResponse ) )
+    else if( typeid( *req ) == typeid( voip_service::InitiateCallResponse ) )
     {
-        handle( dynamic_cast< const dialer::DialerInitiateCallResponse *>( req ) );
+        handle( dynamic_cast< const voip_service::InitiateCallResponse *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerErrorResponse ) )
+    else if( typeid( *req ) == typeid( voip_service::ErrorResponse ) )
     {
-        handle( dynamic_cast< const dialer::DialerErrorResponse *>( req ) );
+        handle( dynamic_cast< const voip_service::ErrorResponse *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerRejectResponse ) )
+    else if( typeid( *req ) == typeid( voip_service::RejectResponse ) )
     {
-        handle( dynamic_cast< const dialer::DialerRejectResponse *>( req ) );
+        handle( dynamic_cast< const voip_service::RejectResponse *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerDropResponse ) )
+    else if( typeid( *req ) == typeid( voip_service::DropResponse ) )
     {
-        handle( dynamic_cast< const dialer::DialerDropResponse *>( req ) );
+        handle( dynamic_cast< const voip_service::DropResponse *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerDial ) )
+    else if( typeid( *req ) == typeid( voip_service::Dial ) )
     {
-        handle( dynamic_cast< const dialer::DialerDial *>( req ) );
+        handle( dynamic_cast< const voip_service::Dial *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerRing ) )
+    else if( typeid( *req ) == typeid( voip_service::Ring ) )
     {
-        handle( dynamic_cast< const dialer::DialerRing *>( req ) );
+        handle( dynamic_cast< const voip_service::Ring *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerConnect ) )
+    else if( typeid( *req ) == typeid( voip_service::Connected ) )
     {
-        handle( dynamic_cast< const dialer::DialerConnect *>( req ) );
+        handle( dynamic_cast< const voip_service::Connected *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerCallDuration ) )
+    else if( typeid( *req ) == typeid( voip_service::CallDuration ) )
     {
-        handle( dynamic_cast< const dialer::DialerCallDuration *>( req ) );
+        handle( dynamic_cast< const voip_service::CallDuration *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerCallEnd ) )
+    else if( typeid( *req ) == typeid( voip_service::ConnectionLost ) )
     {
-        handle( dynamic_cast< const dialer::DialerCallEnd *>( req ) );
+        handle( dynamic_cast< const voip_service::ConnectionLost *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerPlayStarted ) )
+    else if( typeid( *req ) == typeid( voip_service::Failed ) )
     {
-        handle( dynamic_cast< const dialer::DialerPlayStarted *>( req ) );
+        handle( dynamic_cast< const voip_service::Failed *>( req ) );
     }
-    else if( typeid( *req ) == typeid( dialer::DialerPlayStopped ) )
+    else if( typeid( *req ) == typeid( voip_service::PlayFileResponse ) )
     {
-        handle( dynamic_cast< const dialer::DialerPlayStopped *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( dialer::DialerPlayFailed ) )
-    {
-        handle( dynamic_cast< const dialer::DialerPlayFailed *>( req ) );
+        handle( dynamic_cast< const voip_service::PlayFileResponse *>( req ) );
     }
     else
     {
@@ -188,46 +184,21 @@ void CallManager::handle( const servt::IObject* req )
     delete req;
 }
 
-void CallManager::handle_call_end()
+void CallManager::check_call_end()
 {
-    ASSERT( state_ == BUSY || state_ == WAITING_DIALER_RESP || state_ == WAITING_DIALER_FREE );
+    ASSERT( state_ == BUSY );
 
-    switch( state_ )
-    {
+    ASSERT( curr_job_ );    // curr job must not be empty
 
-    case WAITING_DIALER_RESP:
-    case BUSY:
-    {
-        state_  = IDLE;
-        dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
+    if( curr_job_->is_completed() == false )
+        return;
 
-        ASSERT( curr_job_id_ );    // curr job must not be empty
+    state_  = IDLE;
+    trace_state_switch();
 
-        remove_job__( curr_job_id_ );
+    curr_job_.reset();      // as call finished, curr job can be deleted
 
-        curr_job_id_    = 0;      // as call finished, curr job can be deleted
-
-        process_jobs();
-    }
-    break;
-
-    case WAITING_DIALER_FREE:
-    {
-        ASSERT( curr_job_id_ );    // curr job must not be empty
-
-        const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
-
-        dialer_->consume( dialer::create_initiate_call_request( party ) );
-
-        state_  = WAITING_DIALER_RESP;
-
-        dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
-    }
-    break;
-
-    default:
-        break;
-    }
+    process_jobs();
 }
 
 void CallManager::process_jobs()
@@ -236,38 +207,31 @@ void CallManager::process_jobs()
 
     ASSERT( state_ == IDLE ); // just paranoid check
 
-    if( job_id_queue_.empty() )
+    if( job_queue_.empty() )
         return;
 
-    ASSERT( curr_job_id_ == 0 );  // curr_job_id_ must be empty
+    ASSERT( curr_job_ == 0 );  // curr_job_ must be empty
 
-    curr_job_id_ = job_id_queue_.front();
+    curr_job_ = job_queue_.front();
 
-    job_id_queue_.pop_front();
+    job_queue_.pop_front();
 
-    if( callback_ )
-        callback_->consume( create_message_t<CalmanProcessingStarted>( curr_job_id_ ) );
+    curr_job_->initiate();
 
-    const std::string & party = jobman_.get_job_by_parent_job_id( curr_job_id_ )->get_party();
+    state_  = BUSY;
 
-    dialer_->consume( dialer::create_initiate_call_request( party ) );
-
-    state_  = WAITING_DIALER_RESP;
-
-    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
+    trace_state_switch();
 }
 
-void CallManager::handle( const CalmanInsertJob * req )
+void CallManager::handle( const InitiateCall * req )
 {
     // private: no mutex lock
 
     try
     {
-        CallPtr call( new Call( req->job_id, req->party, callback_, dialer_ ) );
+        CallPtr call( new Call( req->job_id, req->party, callback_, voips_ ) );
 
-        job_id_queue_.push_back( req->job_id );
-
-        jobman_.insert_job( req->job_id, call );
+        job_queue_.push_back( call );
 
         dummy_log_debug( MODULENAME, "insert_job: inserted job %u", req->job_id );
 
@@ -281,33 +245,39 @@ void CallManager::handle( const CalmanInsertJob * req )
         ASSERT( 0 );
     }
 }
-void CallManager::handle( const CalmanRemoveJob * req )
+void CallManager::handle( const CancelCall * req )
 {
     // private: no mutex lock
 
     remove_job__( req->job_id );
 }
-bool CallManager::remove_job__( uint32 job_id )
+bool CallManager::remove_job__( uint32_t job_id )
 {
     // private: no mutex lock
 
     try
     {
-        JobIdQueue::iterator it = std::find( job_id_queue_.begin(), job_id_queue_.end(), job_id );
-        if( it != job_id_queue_.end() )
+        if( curr_job_ && curr_job_->get_parent_job_id() == job_id )
+        {
+            curr_job_->remove();
+
+            return true;
+        }
+
+        auto it = find( job_id );
+
+        if( it != job_queue_.end() )
         {
             dummy_log_debug( MODULENAME, "removed job %u from pending queue", job_id );
 
-            job_id_queue_.erase( it );
+            job_queue_.erase( it );
+
+            return true;
         }
 
-        uint32 call_id  = jobman_.get_child_id_by_parent_id( job_id );
+        dummy_log_info( MODULENAME, "job %u not found", job_id );
 
-        jobman_.remove_job( job_id );
-
-        dummy_log_debug( MODULENAME, "removed job %u from map (call %u)", job_id, call_id );
-
-        return true;
+        return false;
     }
     catch( std::exception & e )
     {
@@ -319,18 +289,35 @@ bool CallManager::remove_job__( uint32 job_id )
     }
 }
 
-void CallManager::handle( const CalmanPlayFile * req )
+CallManager::JobQueue::iterator CallManager::find( uint32_t job_id )
 {
-    // private: no mutex lock
+    auto it_end = job_queue_.end();
 
-    jobman_.get_job_by_parent_job_id( req->job_id )->handle( req );
+    for( auto it = job_queue_.begin(); it != it_end; ++it )
+    {
+        if( (*it)->get_parent_job_id() == job_id )
+            return it;
+    }
+
+    return it_end;
 }
 
-void CallManager::handle( const CalmanDrop * req )
+void CallManager::handle( const PlayFileRequest * req )
 {
     // private: no mutex lock
 
-    jobman_.get_job_by_parent_job_id( req->job_id )->handle( req );
+    ASSERT( state_ == BUSY );
+
+    curr_job_->handle( req );
+}
+
+void CallManager::handle( const DropRequest * req )
+{
+    // private: no mutex lock
+
+    ASSERT( state_ == BUSY );
+
+    curr_job_->handle( req );
 }
 
 bool CallManager::shutdown()
@@ -344,73 +331,6 @@ bool CallManager::shutdown()
     return true;
 }
 
-// IDialerCallback interface
-void CallManager::handle( const dialer::DialerInitiateCallResponse * obj )
-{
-    // private: no mutex lock
-
-    if( state_ != WAITING_DIALER_RESP )
-    {
-        dummy_log_fatal( MODULENAME, "on_call_initiate_response: unexpected in state %s", to_c_str( state_ ) );
-        ASSERT( 0 );
-        return;
-    }
-
-    ASSERT( curr_job_id_ );    // curr job must not be empty
-
-    jobman_.assign_child_id( curr_job_id_, obj->call_id );
-
-    state_  = BUSY;
-
-    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
-}
-
-void CallManager::handle( const dialer::DialerRejectResponse * obj )
-{
-    // private: no mutex lock
-
-    if( state_ != WAITING_DIALER_RESP )
-    {
-        dummy_log_fatal( MODULENAME, "on_reject_response: unexpected in state %s", to_c_str( state_ ) );
-        ASSERT( 0 );
-        return;
-    }
-
-    ASSERT( curr_job_id_ );    // curr job must not be empty
-
-    dummy_log_error( MODULENAME, "on_reject_response: dialer is busy, error %u, %s", obj->errorcode, obj->descr.c_str() );
-
-    state_  = WAITING_DIALER_FREE;
-
-    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
-}
-
-void CallManager::handle( const dialer::DialerErrorResponse * obj )
-{
-    // private: no mutex lock
-
-    if( state_ != WAITING_DIALER_RESP )
-    {
-        dummy_log_fatal( MODULENAME, "on_error_response: unexpected in state %s", to_c_str( state_ ) );
-        ASSERT( 0 );
-        return;
-    }
-
-    ASSERT( curr_job_id_ );    // curr job must not be empty
-
-    dummy_log_error( MODULENAME, "on_error_response: cannot dial, error %u, %s", obj->errorcode, obj->descr.c_str() );
-
-    jobman_.get_job_by_parent_job_id( curr_job_id_ )->handle( obj );
-
-    handle_call_end();
-}
-
-void CallManager::handle( const dialer::DialerDropResponse * obj )
-{
-    forward_to_call( obj );
-
-    handle_call_end();
-}
 
 template <class _OBJ>
 void CallManager::forward_to_call( const _OBJ * obj )
@@ -418,45 +338,58 @@ void CallManager::forward_to_call( const _OBJ * obj )
     // private: no mutex lock
 
     ASSERT( state_ == BUSY );
-    ASSERT( curr_job_id_ );     // curr job must not be empty
-    ASSERT( curr_job_id_ == jobman_.get_parent_id_by_child_id( obj->call_id ) );
+    ASSERT( curr_job_ );
 
-    jobman_.get_job_by_child_job_id( obj->call_id )->handle( obj );
+    curr_job_->handle( obj );
+
+    check_call_end();
 }
 
-void CallManager::handle( const dialer::DialerDial * obj )
+// IDialerCallback interface
+void CallManager::handle( const voip_service::InitiateCallResponse * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const dialer::DialerRing * obj )
+void CallManager::handle( const voip_service::RejectResponse * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const dialer::DialerConnect * obj )
+void CallManager::handle( const voip_service::ErrorResponse * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const dialer::DialerCallDuration * obj )
+void CallManager::handle( const voip_service::DropResponse * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const dialer::DialerCallEnd * obj )
+void CallManager::handle( const voip_service::Dial * obj )
 {
     forward_to_call( obj );
+}
+void CallManager::handle( const voip_service::Ring * obj )
+{
+    forward_to_call( obj );
+}
+void CallManager::handle( const voip_service::Connected * obj )
+{
+    forward_to_call( obj );
+}
+void CallManager::handle( const voip_service::CallDuration * obj )
+{
+    forward_to_call( obj );
+}
+void CallManager::handle( const voip_service::ConnectionLost * obj )
+{
+    forward_to_call( obj );
+}
+void CallManager::handle( const voip_service::PlayFileResponse * obj )
+{
+    forward_to_call( obj );
+}
 
-    handle_call_end();
-}
-void CallManager::handle( const dialer::DialerPlayStarted * obj )
+void CallManager::trace_state_switch() const
 {
-    forward_to_call( obj );
-}
-void CallManager::handle( const dialer::DialerPlayStopped * obj )
-{
-    forward_to_call( obj );
-}
-void CallManager::handle( const dialer::DialerPlayFailed * obj )
-{
-    forward_to_call( obj );
+    dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 }
 
 

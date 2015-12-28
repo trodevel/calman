@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1723 $ $Date:: 2015-04-23 #$ $Author: serge $
+// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -30,8 +30,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
-#include "../dialer/i_dialer.h"         // IDialer
-#include "../dialer/object_factory.h"   // create_play_file
+#include "../voip_io/i_voip_service.h"  // IVoipService
+#include "../voip_io/object_factory.h"  // create_play_file_requiest
 
 NAMESPACE_CALMAN_START
 
@@ -43,6 +43,8 @@ const char* to_c_str( Call::status_e s )
     {
             "UNDEF",
             "IDLE",
+            "WAITING_DIALER_FREE",
+            "WAITING_INITIATE_CALL_RESP",
             "DIALLING",
             "ACTIVE",
             "WAITING_DROP_RESPONSE",
@@ -56,15 +58,15 @@ const char* to_c_str( Call::status_e s )
 }
 
 Call::Call(
-        uint32                  parent_job_id,
-        const std::string       & party,
-        ICallManagerCallback    * callback,
-        dialer::IDialer         * dialer ):
+        uint32_t                    parent_job_id,
+        const std::string           & party,
+        ICallManagerCallback        * callback,
+        voip_service::IVoipService  * voips ):
         jobman::Job( parent_job_id ),
         party_( party ),
         state_( IDLE ),
         callback_( callback ),
-        dialer_( dialer )
+        voips_( voips )
 {
     ASSERT( parent_job_id );
 }
@@ -76,14 +78,33 @@ const std::string & Call::get_party() const
     return party_;
 }
 
-void Call::handle( const CalmanPlayFile * req )
+bool Call::is_completed() const
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    dialer_->consume( dialer::create_play_file( get_child_job_id(), req->filename ) );
+    return state_ == DONE;
 }
 
-void Call::handle( const CalmanDrop * req )
+void Call::initiate()
+{
+    MUTEX_SCOPE_LOCK( mutex_ );
+
+    if( callback_ )
+        callback_->consume( create_message_t<ProcessingStarted>( get_parent_job_id() ) );
+
+    voips_->consume( voip_service::create_initiate_call_request( party_ ) );
+
+    state_  = WAITING_INITIATE_CALL_RESP;
+}
+
+void Call::handle( const PlayFileRequest * req )
+{
+    MUTEX_SCOPE_LOCK( mutex_ );
+
+    voips_->consume( voip_service::create_play_file_request( get_child_job_id(), req->filename ) );
+}
+
+void Call::handle( const DropRequest * req )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -93,12 +114,12 @@ void Call::handle( const CalmanDrop * req )
         ASSERT( 0 );
     }
 
-    dialer_->consume( dialer::create_message_t<dialer::DialerDrop>( get_child_job_id() ) );
+    voips_->consume( voip_service::create_message_t<voip_service::DropRequest>( get_child_job_id() ) );
 
     state_  = WAITING_DROP_RESPONSE;
 }
 
-void Call::handle( const dialer::DialerErrorResponse * obj )
+void Call::handle( const voip_service::ErrorResponse * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -115,7 +136,7 @@ void Call::handle( const dialer::DialerErrorResponse * obj )
         callback_->consume( create_finished_by_other_party( parent_job_id_, obj->errorcode, obj->descr ) );
 }
 
-void Call::handle( const dialer::DialerDial * obj )
+void Call::handle( const voip_service::Dial * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -130,7 +151,7 @@ void Call::handle( const dialer::DialerDial * obj )
 
 }
 
-void Call::handle( const dialer::DialerRing * obj )
+void Call::handle( const voip_service::Ring * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -143,7 +164,7 @@ void Call::handle( const dialer::DialerRing * obj )
     dummy_log_debug( MODULENAME, "on_ring: ..." );
 }
 
-void Call::handle( const dialer::DialerConnect * obj )
+void Call::handle( const voip_service::Connected * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -158,10 +179,10 @@ void Call::handle( const dialer::DialerConnect * obj )
     dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 
     if( callback_ )
-        callback_->consume( create_message_t<CalmanCallStarted>( parent_job_id_ ) );
+        callback_->consume( create_message_t<CallStarted>( parent_job_id_ ) );
 }
 
-void Call::handle( const dialer::DialerCallDuration * obj )
+void Call::handle( const voip_service::CallDuration * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -177,7 +198,7 @@ void Call::handle( const dialer::DialerCallDuration * obj )
         callback_->consume( create_call_duration( parent_job_id_, obj->t ) );
 }
 
-void Call::handle( const dialer::DialerCallEnd * obj )
+void Call::handle( const voip_service::ConnectionLost * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -197,7 +218,7 @@ void Call::handle( const dialer::DialerCallEnd * obj )
         callback_->consume( create_finished_by_other_party( parent_job_id_, obj->errorcode, obj->descr ) );
 }
 
-void Call::handle( const dialer::DialerDropResponse * obj )
+void Call::handle( const voip_service::DropResponse * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -212,10 +233,10 @@ void Call::handle( const dialer::DialerDropResponse * obj )
     dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 
     if( callback_ )
-        callback_->consume( create_message_t<CalmanDropResponse>( parent_job_id_ ) );
+        callback_->consume( create_message_t<DropResponse>( parent_job_id_ ) );
 }
 
-void Call::handle( const dialer::DialerPlayStarted * obj )
+void Call::handle( const voip_service::PlayFileResponse * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -226,9 +247,9 @@ void Call::handle( const dialer::DialerPlayStarted * obj )
         return;
     }
 
-    callback_->consume( create_message_t<CalmanPlayStarted>( parent_job_id_ ) );
+    callback_->consume( create_message_t<PlayStarted>( parent_job_id_ ) );
 }
-void Call::handle( const dialer::DialerPlayStopped * obj )
+void Call::handle( const voip_service::DialerPlayStopped * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -244,9 +265,9 @@ void Call::handle( const dialer::DialerPlayStopped * obj )
         dummy_log_warn( MODULENAME, "handle: DialerPlayStopped: arrived too late, ignored in state %s", to_c_str( state_ ) );
     }
 
-    callback_->consume( create_message_t<CalmanPlayStopped>( parent_job_id_ ) );
+    callback_->consume( create_message_t<PlayStopped>( parent_job_id_ ) );
 }
-void Call::handle( const dialer::DialerPlayFailed * obj )
+void Call::handle( const voip_service::DialerPlayFailed * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -257,7 +278,7 @@ void Call::handle( const dialer::DialerPlayFailed * obj )
         return;
     }
 
-    callback_->consume( create_message_t<CalmanPlayFailed>( parent_job_id_ ) );
+    callback_->consume( create_message_t<PlayFailed>( parent_job_id_ ) );
 }
 
 

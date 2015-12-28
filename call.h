@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1723 $ $Date:: 2015-04-23 #$ $Author: serge $
+// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -28,16 +28,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <string>                   // std::string
 #include <mutex>                    // std::mutex
 #include <memory>                   // std::shared_ptr
-#include "../utils/types.h"         // uint32
+#include "../utils/types.h"         // uint32_t
 #include "../jobman/job.h"          // Job
-#include "objects.h"                // CalmanDrop
-#include "../dialer/objects.h"      // DialerDial
+#include "objects.h"                // DropRequest
+#include "../voip_io/objects.h"     // voip_service::Dial
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
-namespace dialer
+namespace voip_service
 {
-class IDialer;
+class IVoipService;
 }
 
 NAMESPACE_CALMAN_START
@@ -51,6 +51,8 @@ public:
     {
         UNDEF,
         IDLE,
+        WAITING_DIALER_FREE,
+        WAITING_INITIATE_CALL_RESP,
         DIALLING,
         ACTIVE,
         WAITING_DROP_RESPONSE,
@@ -59,29 +61,30 @@ public:
 
 public:
     Call(
-        uint32                  parent_job_id,
-        const std::string       & party,
-        ICallManagerCallback    * callback,
-        dialer::IDialer         * dialer );
+        uint32_t                    parent_job_id,
+        const std::string           & party,
+        ICallManagerCallback        * callback,
+        voip_service::IVoipService  * voips );
 
-    const std::string & get_party() const;
+    bool is_completed() const;
+    bool remove() const;
 
     // partly interface ICallManagerCallback
-    void handle( const CalmanPlayFile * req );
-    void handle( const CalmanDrop * req );
+    void initiate();
+    void handle( const PlayFileRequest * req );
+    void handle( const DropRequest * req );
 
-    // partly interface IDialerCallback
-    // not needed: void handle( const dialer::DialerInitiateCallResponse * obj );
-    void handle( const dialer::DialerErrorResponse * obj );
-    void handle( const dialer::DialerDial * obj );
-    void handle( const dialer::DialerRing * obj );
-    void handle( const dialer::DialerConnect * obj );
-    void handle( const dialer::DialerCallDuration * obj );
-    void handle( const dialer::DialerCallEnd * obj );
-    void handle( const dialer::DialerDropResponse * obj );
-    void handle( const dialer::DialerPlayStarted * obj );
-    void handle( const dialer::DialerPlayStopped * obj );
-    void handle( const dialer::DialerPlayFailed * obj );
+    // partly interface IVoipServiceCallback
+    // not needed: void handle( const voip_service::InitiateCallResponse * obj );
+    void handle( const voip_service::ErrorResponse * obj );
+    void handle( const voip_service::Dial * obj );
+    void handle( const voip_service::Ring * obj );
+    void handle( const voip_service::Connected * obj );
+    void handle( const voip_service::CallDuration * obj );
+    void handle( const voip_service::ConnectionLost * obj );
+    void handle( const voip_service::DropResponse * obj );
+    void handle( const voip_service::Failed * obj );
+    void handle( const voip_service::PlayFileResponse * obj );
 
 private:
 
@@ -91,8 +94,8 @@ private:
 
     status_e                state_;
 
-    ICallManagerCallback    * callback_;
-    dialer::IDialer         * dialer_;
+    ICallManagerCallback        * callback_;
+    voip_service::IVoipService  * voips_;
 };
 
 typedef std::shared_ptr< Call >   CallPtr;

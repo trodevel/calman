@@ -20,13 +20,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
 
 #include <string>                   // std::string
-#include "../utils/types.h"         // uint32
+#include <cstdint>                  // uint32_t
 
 #include "../servt/i_object.h"      // IObject
 
@@ -34,65 +34,57 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_CALMAN_START
 
-struct CalmanObject: public servt::IObject
+struct Object: public servt::IObject
 {
-    uint32          job_id;
+    uint32_t        job_id;
 };
 
-struct CalmanInsertJob: public CalmanObject
+struct InitiateCall: public Object
 {
     std::string     party;
 };
 
-struct CalmanRemoveJob: public CalmanObject
+struct CancelCall: public Object
 {
 };
 
-struct CalmanPlayFile: public CalmanObject
+struct PlayFileRequest: public Object
 {
     std::string     filename;
 };
 
-struct CalmanDrop: public CalmanObject
+struct DropRequest: public Object
 {
 };
 
-struct CalmanCallbackObject: public CalmanObject
+struct CallbackObject: public Object
 {
 };
 
-struct CalmanProcessingStarted: public CalmanCallbackObject
+struct ProcessingStarted: public CallbackObject
 {
 };
 
-struct CalmanCallStarted: public CalmanCallbackObject
+struct CallStarted: public CallbackObject
 {
 };
 
-struct CalmanCallDuration: public CalmanCallbackObject
+struct CallDuration: public CallbackObject
 {
-    uint32 t;
+    uint32_t t;
 };
 
-struct CalmanPlayStarted: public CalmanCallbackObject
-{
-};
-
-struct CalmanPlayStopped: public CalmanCallbackObject
+struct PlayFileResponse: public CallbackObject
 {
 };
 
-struct CalmanPlayFailed: public CalmanCallbackObject
+struct ConnectionLost: public CallbackObject
 {
-};
-
-struct CalmanFinishedByOtherParty: public CalmanCallbackObject
-{
-    uint32          errorcode;
+    uint32_t        errorcode;
     std::string     descr;
 };
 
-struct CalmanDropResponse: public CalmanCallbackObject
+struct DropResponse: public CallbackObject
 {
 };
 

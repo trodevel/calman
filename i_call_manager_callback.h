@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 3063 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #ifndef CALMAN_I_CALL_MANAGER_CALLBACK_H
 #define CALMAN_I_CALL_MANAGER_CALLBACK_H
@@ -29,7 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_CALMAN_START
 
-class CalmanCallbackObject;
+class CallbackObject;
 
 class ICallManagerCallback
 {
@@ -37,7 +37,7 @@ public:
 
     virtual ~ICallManagerCallback() {};
 
-    virtual void consume( const CalmanCallbackObject * req )    = 0;
+    virtual void consume( const CallbackObject * req )    = 0;
 };
 
 NAMESPACE_CALMAN_END

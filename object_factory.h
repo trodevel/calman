@@ -20,22 +20,22 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 3070 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
 
-#include "objects.h"    // CalmanObject...
+#include "objects.h"    // Object...
 
 NAMESPACE_CALMAN_START
 
-inline void init_job_id( CalmanObject * obj, uint32 job_id )
+inline void init_job_id( Object * obj, uint32_t job_id )
 {
     obj->job_id = job_id;
 }
 
 template <class _T>
-_T *create_message_t( uint32 job_id )
+_T *create_message_t( uint32_t job_id )
 {
     _T *res = new _T;
 
@@ -44,36 +44,36 @@ _T *create_message_t( uint32 job_id )
     return res;
 }
 
-inline CalmanInsertJob *create_insert_job( uint32 job_id, const std::string & party )
+inline InitiateCall *create_insert_job( uint32_t job_id, const std::string & party )
 {
-    CalmanInsertJob *res = create_message_t<CalmanInsertJob>( job_id );
+    InitiateCall *res = create_message_t<InitiateCall>( job_id );
 
     res->party  = party;
 
     return res;
 }
 
-inline CalmanPlayFile *create_play_file( uint32 job_id, const std::string & filename )
+inline PlayFile *create_play_file( uint32_t job_id, const std::string & filename )
 {
-    CalmanPlayFile *res = create_message_t<CalmanPlayFile>( job_id );
+    PlayFile *res = create_message_t<PlayFile>( job_id );
 
     res->filename   = filename;
 
     return res;
 }
 
-inline CalmanCallDuration *create_call_duration( uint32 job_id, uint32 t )
+inline CallDuration *create_call_duration( uint32_t job_id, uint32_t t )
 {
-    CalmanCallDuration *res = create_message_t<CalmanCallDuration>( job_id );
+    CallDuration *res = create_message_t<CallDuration>( job_id );
 
     res->t  = t;
 
     return res;
 }
 
-inline CalmanFinishedByOtherParty *create_finished_by_other_party( uint32 call_id, uint32 errorcode, const std::string & descr )
+inline FinishedByOtherParty *create_finished_by_other_party( uint32_t call_id, uint32_t errorcode, const std::string & descr )
 {
-    CalmanFinishedByOtherParty *res = create_message_t<CalmanFinishedByOtherParty>( call_id );
+    FinishedByOtherParty *res = create_message_t<FinishedByOtherParty>( call_id );
 
     res->errorcode  = errorcode;
     res->descr      = descr;

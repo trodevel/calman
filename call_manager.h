@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1723 $ $Date:: 2015-04-23 #$ $Author: serge $
+// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -32,16 +32,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"                         // Config
 #include "i_call_manager.h"                 // ICallManager
 #include "objects.h"                        // CalmanInsertJob, ...
-#include "../dialer/i_dialer_callback.h"    // IDialerCallback
+#include "../voip_io/i_voip_service_callback.h"     // IVoipServiceCallback
 #include "../threcon/i_controllable.h"      // IControllable
 #include "../jobman/job_man_t.h"            // JobManT
 #include "../servt/server_t.h"              // ServerT
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
-namespace dialer
+namespace voip_service
 {
-class IDialer;
+class IVoipService;
 }
 
 NAMESPACE_CALMAN_START
@@ -54,7 +54,7 @@ typedef servt::ServerT< const servt::IObject*, CallManager> ServerBase;
 
 class CallManager: public ServerBase,
     virtual public ICallManager,
-    virtual public dialer::IDialerCallback,
+    virtual public voip_service::IVoipServiceCallback,
     virtual public threcon::IControllable
 {
     friend ServerBase;
@@ -63,8 +63,6 @@ public:
     enum state_e
     {
         IDLE    = 0,
-        WAITING_DIALER_RESP,
-        WAITING_DIALER_FREE,
         BUSY
     };
 
@@ -72,18 +70,23 @@ public:
     CallManager();
     ~CallManager();
 
-    bool init( dialer::IDialer * dialer, const Config & cfg );
+    bool init( voip_service::IVoipService * voips, const Config & cfg );
 
     bool register_callback( ICallManagerCallback * callback );
 
     // ICallManager interface
-    void consume( const CalmanObject* obj );
+    void consume( const Object* obj );
 
-    // interface IDialerCallback
-    void consume( const dialer::DialerCallbackObject * obj );
+    // interface IVoipServiceCallback
+    void consume( const voip_service::CallbackObject * obj );
 
     // interface threcon::IControllable
     bool shutdown();
+
+
+private:
+
+    typedef std::list<CallPtr>  JobQueue;
 
 private:
 
@@ -91,35 +94,34 @@ private:
     void handle( const servt::IObject* req );
 
     // ICallManager interface
-    void handle( const CalmanInsertJob * req );
-    void handle( const CalmanRemoveJob * req );
-    void handle( const CalmanPlayFile * req );
-    void handle( const CalmanDrop * req );
+    void handle( const InitiateCall * req );
+    void handle( const CancelCall * req );
+    void handle( const PlayFileRequest * req );
+    void handle( const DropRequest * req );
 
-    // interface IDialerCallback
-    void handle( const dialer::DialerInitiateCallResponse * obj );
-    void handle( const dialer::DialerRejectResponse * obj );
-    void handle( const dialer::DialerErrorResponse * obj );
-    void handle( const dialer::DialerDropResponse * obj );
-    void handle( const dialer::DialerDial * obj );
-    void handle( const dialer::DialerRing * obj );
-    void handle( const dialer::DialerConnect * obj );
-    void handle( const dialer::DialerCallDuration * obj );
-    void handle( const dialer::DialerCallEnd * obj );
-    void handle( const dialer::DialerPlayStarted * obj );
-    void handle( const dialer::DialerPlayStopped * obj );
-    void handle( const dialer::DialerPlayFailed * obj );
+    // interface IVoipServiceCallback
+    void handle( const voip_service::InitiateCallResponse * obj );
+    void handle( const voip_service::RejectResponse * obj );
+    void handle( const voip_service::ErrorResponse * obj );
+    void handle( const voip_service::DropResponse * obj );
+    void handle( const voip_service::Dial * obj );
+    void handle( const voip_service::Ring * obj );
+    void handle( const voip_service::Connected * obj );
+    void handle( const voip_service::CallDuration * obj );
+    void handle( const voip_service::ConnectionLost * obj );
+    void handle( const voip_service::Failed * obj );
+    void handle( const voip_service::PlayFileResponse * obj );
 
     template <class _OBJ>
     void forward_to_call( const _OBJ * obj );
 
-    void handle_call_end();
+    void check_call_end();
     void process_jobs();
-    bool remove_job__( uint32 job_id );
+    bool remove_job__( uint32_t job_id );
 
-private:
+    void trace_state_switch() const;
 
-    typedef std::list<uint32>           JobIdQueue;
+    JobQueue::iterator find( uint32_t job_id );
 
 private:
     mutable std::mutex          mutex_;
@@ -128,14 +130,12 @@ private:
 
     state_e                     state_;
 
-    JobIdQueue                  job_id_queue_;
+    JobQueue                    job_queue_;
 
-    jobman::JobManT<CallPtr>    jobman_;
-
-    dialer::IDialer             * dialer_;
+    voip_service::IVoipService  * voips_;
     ICallManagerCallback        * callback_;
 
-    uint32                      curr_job_id_;
+    CallPtr                     curr_job_;
 };
 
 NAMESPACE_CALMAN_END

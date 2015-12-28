@@ -20,19 +20,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 3067 $ $Date:: 2015-12-28 #$ $Author: serge $
 
 #ifndef CALMAN_CONFIG_H
 #define CALMAN_CONFIG_H
 
-#include "../utils/types.h"         // uint32
-#include "namespace_lib.h"              // NAMESPACE_CALMAN_START
+#include <cstdint>                  // uint32_t
+#include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
 
 struct Config
 {
-    uint32  sleep_time_ms;  // try 3 ms
+    uint32_t    sleep_time_ms;  // try 3 ms
 };
 
 NAMESPACE_CALMAN_END
