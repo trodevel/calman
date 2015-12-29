@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
+// $Revision: 3075 $ $Date:: 2015-12-29 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -39,12 +39,24 @@ struct Object: public servt::IObject
     uint32_t        job_id;
 };
 
-struct InitiateCall: public Object
+struct CallbackObject: public Object
+{
+};
+
+struct InitiateCallRequest: public Object
 {
     std::string     party;
 };
 
-struct CancelCall: public Object
+struct InitiateCallResponse: public CallbackObject
+{
+};
+
+struct DropRequest: public Object
+{
+};
+
+struct DropResponse: public CallbackObject
 {
 };
 
@@ -53,19 +65,11 @@ struct PlayFileRequest: public Object
     std::string     filename;
 };
 
-struct DropRequest: public Object
+struct PlayFileResponse: public CallbackObject
 {
 };
 
-struct CallbackObject: public Object
-{
-};
-
-struct ProcessingStarted: public CallbackObject
-{
-};
-
-struct CallStarted: public CallbackObject
+struct Connected: public CallbackObject
 {
 };
 
@@ -74,18 +78,21 @@ struct CallDuration: public CallbackObject
     uint32_t t;
 };
 
-struct PlayFileResponse: public CallbackObject
+struct ErrorResponse: public CallbackObject
 {
+    std::string     descr;
+};
+
+struct Failed: public CallbackObject
+{
+    uint32_t        errorcode;
+    std::string     descr;
 };
 
 struct ConnectionLost: public CallbackObject
 {
     uint32_t        errorcode;
     std::string     descr;
-};
-
-struct DropResponse: public CallbackObject
-{
 };
 
 NAMESPACE_CALMAN_END

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
+// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -31,7 +31,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "call.h"                           // Call
 #include "config.h"                         // Config
 #include "i_call_manager.h"                 // ICallManager
-#include "objects.h"                        // CalmanInsertJob, ...
+#include "objects.h"                        // InitiateCallRequest, ...
 #include "../voip_io/i_voip_service_callback.h"     // IVoipServiceCallback
 #include "../threcon/i_controllable.h"      // IControllable
 #include "../jobman/job_man_t.h"            // JobManT
@@ -94,10 +94,9 @@ private:
     void handle( const servt::IObject* req );
 
     // ICallManager interface
-    void handle( const InitiateCall * req );
-    void handle( const CancelCall * req );
-    void handle( const PlayFileRequest * req );
+    void handle( const InitiateCallRequest * req );
     void handle( const DropRequest * req );
+    void handle( const PlayFileRequest * req );
 
     // interface IVoipServiceCallback
     void handle( const voip_service::InitiateCallResponse * obj );
@@ -117,9 +116,12 @@ private:
 
     void check_call_end();
     void process_jobs();
-    bool remove_job__( uint32_t job_id );
 
     void trace_state_switch() const;
+
+    void send_error_response( uint32_t job_id, const std::string & descr );
+
+    void callback_consume( const CallbackObject * req );
 
     JobQueue::iterator find( uint32_t job_id );
 

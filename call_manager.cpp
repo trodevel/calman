@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
+// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -114,21 +114,17 @@ void CallManager::handle( const servt::IObject* req )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( typeid( *req ) == typeid( InitiateCall ) )
+    if( typeid( *req ) == typeid( InitiateCallRequest ) )
     {
-        handle( dynamic_cast< const InitiateCall *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( CancelCall ) )
-    {
-        handle( dynamic_cast< const CancelCall *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( PlayFileRequest ) )
-    {
-        handle( dynamic_cast< const PlayFileRequest *>( req ) );
+        handle( dynamic_cast< const InitiateCallRequest *>( req ) );
     }
     else if( typeid( *req ) == typeid( DropRequest ) )
     {
         handle( dynamic_cast< const DropRequest *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( PlayFileRequest ) )
+    {
+        handle( dynamic_cast< const PlayFileRequest *>( req ) );
     }
     else if( typeid( *req ) == typeid( voip_service::InitiateCallResponse ) )
     {
@@ -210,7 +206,7 @@ void CallManager::process_jobs()
     if( job_queue_.empty() )
         return;
 
-    ASSERT( curr_job_ == 0 );  // curr_job_ must be empty
+    ASSERT( curr_job_ == nullptr );  // curr_job_ must be empty
 
     curr_job_ = job_queue_.front();
 
@@ -223,12 +219,31 @@ void CallManager::process_jobs()
     trace_state_switch();
 }
 
-void CallManager::handle( const InitiateCall * req )
+void CallManager::handle( const InitiateCallRequest * req )
 {
     // private: no mutex lock
 
     try
     {
+        if( curr_job_ && curr_job_->get_parent_job_id() == req->job_id )
+        {
+            dummy_log_error( MODULENAME, "job %u already exists and is active", req->job_id );
+
+            send_error_response( req->job_id, "job already exists and is active" );
+            return;
+        }
+
+        auto it = find( req->job_id );
+
+        if( it != job_queue_.end() )
+        {
+            dummy_log_error( MODULENAME, "job %u already exists in the queue", req->job_id );
+
+            send_error_response( req->job_id, "job already exists in the queue" );
+
+            return;
+        }
+
         CallPtr call( new Call( req->job_id, req->party, callback_, voips_ ) );
 
         job_queue_.push_back( call );
@@ -245,47 +260,33 @@ void CallManager::handle( const InitiateCall * req )
         ASSERT( 0 );
     }
 }
-void CallManager::handle( const CancelCall * req )
+
+void CallManager::handle( const DropRequest * req )
 {
     // private: no mutex lock
 
-    remove_job__( req->job_id );
-}
-bool CallManager::remove_job__( uint32_t job_id )
-{
-    // private: no mutex lock
-
-    try
+    if( curr_job_ && curr_job_->get_parent_job_id() == req->job_id )
     {
-        if( curr_job_ && curr_job_->get_parent_job_id() == job_id )
-        {
-            curr_job_->remove();
-
-            return true;
-        }
-
-        auto it = find( job_id );
-
-        if( it != job_queue_.end() )
-        {
-            dummy_log_debug( MODULENAME, "removed job %u from pending queue", job_id );
-
-            job_queue_.erase( it );
-
-            return true;
-        }
-
-        dummy_log_info( MODULENAME, "job %u not found", job_id );
-
-        return false;
+        curr_job_->handle( req );
     }
-    catch( std::exception & e )
+    else
     {
-        dummy_log_fatal( MODULENAME, "remove_job: error - %s", e.what() );
+        auto it = find( req->job_id );
 
-        ASSERT( 0 );
+        if( it == job_queue_.end() )
+        {
+            dummy_log_error( MODULENAME, "job %u not found", req->job_id );
 
-        return false;
+            send_error_response( req->job_id, "job not found" );
+
+            return;
+        }
+
+        dummy_log_info( MODULENAME, "removed job %u from queue", req->job_id );
+
+        job_queue_.erase( it );
+
+        callback_consume( create_message_t<DropResponse>( req->job_id ) );
     }
 }
 
@@ -303,15 +304,6 @@ CallManager::JobQueue::iterator CallManager::find( uint32_t job_id )
 }
 
 void CallManager::handle( const PlayFileRequest * req )
-{
-    // private: no mutex lock
-
-    ASSERT( state_ == BUSY );
-
-    curr_job_->handle( req );
-}
-
-void CallManager::handle( const DropRequest * req )
 {
     // private: no mutex lock
 
@@ -390,6 +382,17 @@ void CallManager::handle( const voip_service::PlayFileResponse * obj )
 void CallManager::trace_state_switch() const
 {
     dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
+}
+
+void CallManager::send_error_response( uint32_t job_id, const std::string & descr )
+{
+    callback_consume( create_error_response( job_id, descr ) );
+}
+
+void CallManager::callback_consume( const CallbackObject * req )
+{
+    if( callback_ )
+        callback_->consume( req );
 }
 
 

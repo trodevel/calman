@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3071 $ $Date:: 2015-12-28 #$ $Author: serge $
+// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -29,7 +29,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>                    // std::mutex
 #include <memory>                   // std::shared_ptr
 #include "../utils/types.h"         // uint32_t
-#include "../jobman/job.h"          // Job
 #include "objects.h"                // DropRequest
 #include "../voip_io/objects.h"     // voip_service::Dial
 
@@ -44,7 +43,7 @@ NAMESPACE_CALMAN_START
 
 class ICallManagerCallback;
 
-class Call: public jobman::Job
+class Call
 {
 public:
     enum status_e
@@ -53,8 +52,8 @@ public:
         IDLE,
         WAITING_DIALER_FREE,
         WAITING_INITIATE_CALL_RESP,
-        DIALLING,
-        ACTIVE,
+        WAITING_CONNECTION,
+        CONNECTED,
         WAITING_DROP_RESPONSE,
         DONE
     };
@@ -75,7 +74,7 @@ public:
     void handle( const DropRequest * req );
 
     // partly interface IVoipServiceCallback
-    // not needed: void handle( const voip_service::InitiateCallResponse * obj );
+    void handle( const voip_service::InitiateCallResponse * obj );
     void handle( const voip_service::ErrorResponse * obj );
     void handle( const voip_service::Dial * obj );
     void handle( const voip_service::Ring * obj );
@@ -87,12 +86,24 @@ public:
     void handle( const voip_service::PlayFileResponse * obj );
 
 private:
+    void trace_state_switch() const;
+
+    void send_error_response( const std::string & descr );
+
+    void callback_consume( const CallbackObject * req );
+
+
+private:
 
     mutable std::mutex      mutex_;
 
     std::string             party_;
 
     status_e                state_;
+
+    uint32_t                parent_job_id_;
+    uint32_t                current_req_id_;
+    uint32_t                call_id_;
 
     ICallManagerCallback        * callback_;
     voip_service::IVoipService  * voips_;

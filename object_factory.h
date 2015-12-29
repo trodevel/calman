@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3070 $ $Date:: 2015-12-28 #$ $Author: serge $
+// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
@@ -44,14 +44,27 @@ _T *create_message_t( uint32_t job_id )
     return res;
 }
 
-inline InitiateCall *create_insert_job( uint32_t job_id, const std::string & party )
+inline InitiateCallRequest *create_insert_job( uint32_t job_id, const std::string & party )
 {
-    InitiateCall *res = create_message_t<InitiateCall>( job_id );
+    InitiateCallRequest *res = create_message_t<InitiateCallRequest>( job_id );
 
     res->party  = party;
 
     return res;
 }
+
+
+inline ErrorResponse *create_error_response( uint32_t job_id, const std::string & descr )
+{
+    ErrorResponse *res = new ErrorResponse;
+
+    init_job_id( res, job_id );
+
+    res->descr      = descr;
+
+    return res;
+}
+
 
 inline PlayFile *create_play_file( uint32_t job_id, const std::string & filename )
 {
@@ -71,9 +84,19 @@ inline CallDuration *create_call_duration( uint32_t job_id, uint32_t t )
     return res;
 }
 
-inline FinishedByOtherParty *create_finished_by_other_party( uint32_t call_id, uint32_t errorcode, const std::string & descr )
+inline Failed *create_failed( uint32_t job_id, uint32_t errorcode, const std::string & descr )
 {
-    FinishedByOtherParty *res = create_message_t<FinishedByOtherParty>( call_id );
+    auto res = create_message_t<Failed>( job_id );
+
+    res->errorcode  = errorcode;
+    res->descr      = descr;
+
+    return res;
+}
+
+inline ConnectionLost *create_connection_lost( uint32_t job_id, uint32_t errorcode, const std::string & descr )
+{
+    auto res = create_message_t<ConnectionLost>( job_id );
 
     res->errorcode  = errorcode;
     res->descr      = descr;
