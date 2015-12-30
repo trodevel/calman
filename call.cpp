@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3082 $ $Date:: 2015-12-30 #$ $Author: serge $
+// $Revision: 3085 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -62,7 +62,6 @@ Call::Call(
         const std::string           & party,
         ICallManagerCallback        * callback,
         voip_service::IVoipService  * voips ):
-        jobman::Job( parent_job_id ),
         party_( party ),
         state_( IDLE ),
         parent_job_id_( parent_job_id ),
@@ -211,7 +210,9 @@ void Call::handle( const voip_service::RejectResponse * obj )
 
         dummy_log_info( MODULENAME, "handle RejectResponse: dialer is busy, sleeping %u sec ...", sleep_interval_ );
 
-        dummy_log_info( MODULENAME, "handle RejectResponse: active again, retrying ...", sleep_interval_ );
+        THIS_THREAD_SLEEP_SEC( sleep_interval_ );
+
+        dummy_log_info( MODULENAME, "handle RejectResponse: active again, retrying ..." );
 
         current_req_id_ = get_next_request_id();
 
@@ -375,7 +376,7 @@ void Call::send_reject_due_to_wrong_state()
 
     dummy_log_error( MODULENAME, "cannot process request in state %s", to_c_str( state_ ) );
 
-    send_reject_response( "cannot process in state " + to_c_str( state_ ) );
+    send_reject_response( std::string( "cannot process in state " ) + to_c_str( state_ ) );
 }
 
 bool Call::send_reject_if_in_request_processing()

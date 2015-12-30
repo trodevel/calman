@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3080 $ $Date:: 2015-12-30 #$ $Author: serge $
+// $Revision: 3089 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
@@ -44,11 +44,18 @@ _T *create_message_t( uint32_t job_id )
     return res;
 }
 
-inline InitiateCallRequest *create_insert_job( uint32_t job_id, const std::string & party )
+inline InitiateCallRequest *create_initiate_call_request( uint32_t job_id, const std::string & party )
 {
-    InitiateCallRequest *res = create_message_t<InitiateCallRequest>( job_id );
+    auto *res = create_message_t<InitiateCallRequest>( job_id );
 
     res->party  = party;
+
+    return res;
+}
+
+inline DropRequest *create_drop_request( uint32_t job_id )
+{
+    auto *res = create_message_t<DropRequest>( job_id );
 
     return res;
 }
