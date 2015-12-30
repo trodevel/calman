@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
+// $Revision: 3082 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -67,6 +67,7 @@ public:
 
     bool is_completed() const;
     bool remove() const;
+    uint32_t get_parent_job_id() const;
 
     // partly interface ICallManagerCallback
     void initiate();
@@ -76,6 +77,7 @@ public:
     // partly interface IVoipServiceCallback
     void handle( const voip_service::InitiateCallResponse * obj );
     void handle( const voip_service::ErrorResponse * obj );
+    void handle( const voip_service::RejectResponse * obj );
     void handle( const voip_service::Dial * obj );
     void handle( const voip_service::Ring * obj );
     void handle( const voip_service::Connected * obj );
@@ -88,10 +90,16 @@ public:
 private:
     void trace_state_switch() const;
 
-    void send_error_response( const std::string & descr );
+    void send_reject_due_to_wrong_state();
+    bool send_reject_if_in_request_processing();
 
+    void send_error_response( const std::string & descr );
+    void send_reject_response( const std::string & descr );
+
+    void validate_and_reset_response_job_id( const voip_service::ResponseObject * resp );
     void callback_consume( const CallbackObject * req );
 
+    static uint32_t get_next_request_id();
 
 private:
 
@@ -104,6 +112,7 @@ private:
     uint32_t                parent_job_id_;
     uint32_t                current_req_id_;
     uint32_t                call_id_;
+    uint32_t                sleep_interval_;
 
     ICallManagerCallback        * callback_;
     voip_service::IVoipService  * voips_;

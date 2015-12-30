@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
+// $Revision: 3082 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -68,17 +68,11 @@ Call::Call(
         parent_job_id_( parent_job_id ),
         current_req_id_( 0 ),
         call_id_( 0 ),
+        sleep_interval_( 1 ),
         callback_( callback ),
         voips_( voips )
 {
     ASSERT( parent_job_id );
-}
-
-const std::string & Call::get_party() const
-{
-    MUTEX_SCOPE_LOCK( mutex_ );
-
-    return party_;
 }
 
 bool Call::is_completed() const
@@ -86,6 +80,13 @@ bool Call::is_completed() const
     MUTEX_SCOPE_LOCK( mutex_ );
 
     return state_ == DONE;
+}
+
+uint32_t Call::get_parent_job_id() const
+{
+    MUTEX_SCOPE_LOCK( mutex_ );
+
+    return parent_job_id_;
 }
 
 void Call::initiate()
@@ -98,9 +99,13 @@ void Call::initiate()
         ASSERT( 0 );
     }
 
-    callback_consume( create_message_t<InitiateCallResponse>( get_parent_job_id() ) );
+    ASSERT( current_req_id_ == 0 );
 
-    voips_->consume( voip_service::create_initiate_call_request( party_ ) );
+    current_req_id_ = get_next_request_id();
+
+    callback_consume( create_message_t<InitiateCallResponse>( parent_job_id_ ) );
+
+    voips_->consume( voip_service::create_initiate_call_request( current_req_id_, party_ ) );
 
     state_  = WAITING_INITIATE_CALL_RESP;
 
@@ -113,12 +118,18 @@ void Call::handle( const PlayFileRequest * req )
 
     if( state_ != CONNECTED )
     {
-        // TODO send reject response, fc29
-        dummy_log_fatal( MODULENAME, "handle PlayFileRequest: unexpected in state %s", to_c_str( state_ ) );
-        ASSERT( 0 );
+        send_reject_due_to_wrong_state();
+        return;
     }
 
-    voips_->consume( voip_service::create_play_file_request( get_child_job_id(), req->filename ) );
+    if( send_reject_if_in_request_processing() )
+    {
+        return;
+    }
+
+    current_req_id_ = get_next_request_id();
+
+    voips_->consume( voip_service::create_play_file_request( current_req_id_, call_id_, req->filename ) );
 }
 
 void Call::handle( const DropRequest * req )
@@ -127,12 +138,18 @@ void Call::handle( const DropRequest * req )
 
     if( state_ != CONNECTED && state_ != WAITING_CONNECTION )
     {
-        // TODO send reject response, fc29
-        dummy_log_fatal( MODULENAME, "drop: unexpected in state %s", to_c_str( state_ ) );
-        ASSERT( 0 );
+        send_reject_due_to_wrong_state();
+        return;
     }
 
-    voips_->consume( voip_service::create_message_t<voip_service::DropRequest>( get_child_job_id() ) );
+    if( send_reject_if_in_request_processing() )
+    {
+        return;
+    }
+
+    current_req_id_ = get_next_request_id();
+
+    voips_->consume( voip_service::create_drop_request( current_req_id_, call_id_ ) );
 
     state_  = WAITING_DROP_RESPONSE;
 }
@@ -157,6 +174,8 @@ void Call::handle( const voip_service::ErrorResponse * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
+    validate_and_reset_response_job_id( obj );
+
     if( state_ == WAITING_INITIATE_CALL_RESP )
     {
         send_error_response( "failed to initiate call" );
@@ -165,7 +184,7 @@ void Call::handle( const voip_service::ErrorResponse * obj )
     }
     else if( state_ == CONNECTED )
     {
-
+        send_error_response( obj->descr );
     }
     else if( state_ == WAITING_DROP_RESPONSE )
     {
@@ -176,6 +195,40 @@ void Call::handle( const voip_service::ErrorResponse * obj )
     else
     {
         dummy_log_fatal( MODULENAME, "handle ErrorResponse: unexpected in state %s", to_c_str( state_ ) );
+        ASSERT( 0 );
+    }
+}
+
+void Call::handle( const voip_service::RejectResponse * obj )
+{
+    MUTEX_SCOPE_LOCK( mutex_ );
+
+    validate_and_reset_response_job_id( obj );
+
+    if( state_ == WAITING_INITIATE_CALL_RESP )
+    {
+        sleep_interval_ *= 2;
+
+        dummy_log_info( MODULENAME, "handle RejectResponse: dialer is busy, sleeping %u sec ...", sleep_interval_ );
+
+        dummy_log_info( MODULENAME, "handle RejectResponse: active again, retrying ...", sleep_interval_ );
+
+        current_req_id_ = get_next_request_id();
+
+        voips_->consume( voip_service::create_initiate_call_request( current_req_id_, party_ ) );
+
+    }
+    else if( state_ == CONNECTED )
+    {
+        send_reject_response( obj->descr );
+    }
+    else if( state_ == WAITING_DROP_RESPONSE )
+    {
+        send_reject_response( "failed to drop call" );
+    }
+    else
+    {
+        dummy_log_fatal( MODULENAME, "handle RejectResponse: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 }
@@ -280,9 +333,11 @@ void Call::handle( const voip_service::DropResponse * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
+    validate_and_reset_response_job_id( obj );
+
     if( state_ != WAITING_DROP_RESPONSE )
     {
-        dummy_log_fatal( MODULENAME, "handle: DialerDropResponse: unexpected in state %s", to_c_str( state_ ) );
+        dummy_log_fatal( MODULENAME, "handle: DropResponse: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
     }
 
@@ -297,45 +352,16 @@ void Call::handle( const voip_service::PlayFileResponse * obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != CONNECTED )
-    {
-        dummy_log_fatal( MODULENAME, "handle: DialerPlayStarted: unexpected in state %s", to_c_str( state_ ) );
-        ASSERT( 0 );
-        return;
-    }
-
-    callback_consume( create_message_t<PlayStarted>( parent_job_id_ ) );
-}
-void Call::handle( const voip_service::DialerPlayStopped * obj )
-{
-    MUTEX_SCOPE_LOCK( mutex_ );
-
-    if( state_ != CONNECTED && state_ != WAITING_DROP_RESPONSE )
-    {
-        dummy_log_fatal( MODULENAME, "handle: DialerPlayStopped: unexpected in state %s", to_c_str( state_ ) );
-        ASSERT( 0 );
-        return;
-    }
-
-    if( state_ == WAITING_DROP_RESPONSE )
-    {
-        dummy_log_warn( MODULENAME, "handle: DialerPlayStopped: arrived too late, ignored in state %s", to_c_str( state_ ) );
-    }
-
-    callback_consume( create_message_t<PlayStopped>( parent_job_id_ ) );
-}
-void Call::handle( const voip_service::DialerPlayFailed * obj )
-{
-    MUTEX_SCOPE_LOCK( mutex_ );
+    validate_and_reset_response_job_id( obj );
 
     if( state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "handle: DialerPlayFailed: unexpected in state %s", to_c_str( state_ ) );
+        dummy_log_fatal( MODULENAME, "handle: PlayFileResponse: unexpected in state %s", to_c_str( state_ ) );
         ASSERT( 0 );
         return;
     }
 
-    callback_consume( create_message_t<PlayFailed>( parent_job_id_ ) );
+    callback_consume( create_message_t<PlayFileResponse>( parent_job_id_ ) );
 }
 
 void Call::trace_state_switch() const
@@ -343,15 +369,62 @@ void Call::trace_state_switch() const
     dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
 }
 
+void Call::send_reject_due_to_wrong_state()
+{
+    // called from locked area
+
+    dummy_log_error( MODULENAME, "cannot process request in state %s", to_c_str( state_ ) );
+
+    send_reject_response( "cannot process in state " + to_c_str( state_ ) );
+}
+
+bool Call::send_reject_if_in_request_processing()
+{
+    // called from locked area
+
+    if( current_req_id_ == 0 )
+    {
+        return false;
+    }
+
+    dummy_log_info( MODULENAME, "cannot process request, busy with processing request %u", current_req_id_ );
+
+    send_reject_response( "cannot process request, busy with processing request " + std::to_string( current_req_id_ ) );
+
+    return true;
+}
+
+
 void Call::send_error_response( const std::string & descr )
 {
     callback_consume( create_error_response( parent_job_id_, descr ) );
+}
+
+void Call::send_reject_response( const std::string & descr )
+{
+    callback_consume( create_reject_response( parent_job_id_, descr ) );
+}
+
+void Call::validate_and_reset_response_job_id( const voip_service::ResponseObject * resp )
+{
+    ASSERT( current_req_id_ != 0 );
+
+    ASSERT( current_req_id_ == resp->job_id );
+
+    current_req_id_ = 0;
 }
 
 void Call::callback_consume( const CallbackObject * req )
 {
     if( callback_ )
         callback_->consume( req );
+}
+
+uint32_t Call::get_next_request_id()
+{
+    static uint32_t id = 0;
+
+    return ++id;
 }
 
 

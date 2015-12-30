@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3075 $ $Date:: 2015-12-29 #$ $Author: serge $
+// $Revision: 3077 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -41,6 +41,16 @@ struct Object: public servt::IObject
 
 struct CallbackObject: public Object
 {
+};
+
+struct ErrorResponse: public CallbackObject
+{
+    std::string     descr;
+};
+
+struct RejectResponse: public CallbackObject
+{
+    std::string     descr;
 };
 
 struct InitiateCallRequest: public Object
@@ -76,11 +86,6 @@ struct Connected: public CallbackObject
 struct CallDuration: public CallbackObject
 {
     uint32_t t;
-};
-
-struct ErrorResponse: public CallbackObject
-{
-    std::string     descr;
 };
 
 struct Failed: public CallbackObject

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
+// $Revision: 3079 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -307,9 +307,27 @@ void CallManager::handle( const PlayFileRequest * req )
 {
     // private: no mutex lock
 
-    ASSERT( state_ == BUSY );
+    if( curr_job_ && curr_job_->get_parent_job_id() == req->job_id )
+    {
+        curr_job_->handle( req );
+    }
+    else
+    {
+        auto it = find( req->job_id );
 
-    curr_job_->handle( req );
+        if( it == job_queue_.end() )
+        {
+            dummy_log_error( MODULENAME, "job %u not found", req->job_id );
+
+            send_error_response( req->job_id, "job not found" );
+
+            return;
+        }
+
+        dummy_log_error( MODULENAME, "job %u is not active", req->job_id );
+
+        send_reject_response( req->job_id, "job is not active" );
+    }
 }
 
 bool CallManager::shutdown()
@@ -387,6 +405,11 @@ void CallManager::trace_state_switch() const
 void CallManager::send_error_response( uint32_t job_id, const std::string & descr )
 {
     callback_consume( create_error_response( job_id, descr ) );
+}
+
+void CallManager::send_reject_response( uint32_t job_id, const std::string & descr )
+{
+    callback_consume( create_reject_response( job_id, descr ) );
 }
 
 void CallManager::callback_consume( const CallbackObject * req )

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
+// $Revision: 3080 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
@@ -65,10 +65,21 @@ inline ErrorResponse *create_error_response( uint32_t job_id, const std::string 
     return res;
 }
 
-
-inline PlayFile *create_play_file( uint32_t job_id, const std::string & filename )
+inline RejectResponse *create_reject_response( uint32_t job_id, const std::string & descr )
 {
-    PlayFile *res = create_message_t<PlayFile>( job_id );
+    auto *res = new RejectResponse;
+
+    init_job_id( res, job_id );
+
+    res->descr      = descr;
+
+    return res;
+}
+
+
+inline PlayFileRequest *create_play_file_request( uint32_t job_id, const std::string & filename )
+{
+    auto *res = create_message_t<PlayFileRequest>( job_id );
 
     res->filename   = filename;
 

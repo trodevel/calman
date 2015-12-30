@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3074 $ $Date:: 2015-12-29 #$ $Author: serge $
+// $Revision: 3079 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -120,6 +120,7 @@ private:
     void trace_state_switch() const;
 
     void send_error_response( uint32_t job_id, const std::string & descr );
+    void send_reject_response( uint32_t job_id, const std::string & descr );
 
     void callback_consume( const CallbackObject * req );
 
