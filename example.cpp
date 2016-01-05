@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3089 $ $Date:: 2015-12-30 #$ $Author: serge $
+// $Revision: 3097 $ $Date:: 2016-01-04 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -31,6 +31,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "call_manager.h"               // calman::CallManager
 #include "object_factory.h"             // create_message_t
 
+#include "../dialer/dialer.h"                   // dialer::Dialer
 #include "../skype_service/skype_service.h"     // SkypeService
 #include "../utils/dummy_logger.h"      // dummy_log_set_log_level
 #include "../scheduler/scheduler.h"     // Scheduler
@@ -83,7 +84,7 @@ public:
         else if( typeid( *req ) == typeid( calman::Failed ) )
         {
             std::cout << "got Failed"
-                    << " job_id " << dynamic_cast< const calman::ConnectionLost *>( req )->job_id
+                    << " job_id " << dynamic_cast< const calman::Failed *>( req )->job_id
                     << " " << dynamic_cast< const calman::Failed *>( req )->descr
                     << std::endl;
         }
@@ -256,6 +257,7 @@ int main()
     Callback test( & calman, & sched );
     calman.register_callback( &test );
 
+    dialer.start();
     calman.start();
 
     std::vector< std::thread > tg;
@@ -266,8 +268,8 @@ int main()
     for( auto & t : tg )
         t.join();
 
-    dialer.shutdown();
-    calman.Dialer::shutdown();
+    dialer.Dialer::shutdown();
+    calman.shutdown();
 
     std::cout << "Done! =)" << std::endl;
 

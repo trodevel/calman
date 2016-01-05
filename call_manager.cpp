@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3079 $ $Date:: 2015-12-30 #$ $Author: serge $
+// $Revision: 3091 $ $Date:: 2016-01-04 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -392,6 +392,12 @@ void CallManager::handle( const voip_service::ConnectionLost * obj )
 {
     forward_to_call( obj );
 }
+
+void CallManager::handle( const voip_service::Failed * obj )
+{
+    forward_to_call( obj );
+}
+
 void CallManager::handle( const voip_service::PlayFileResponse * obj )
 {
     forward_to_call( obj );

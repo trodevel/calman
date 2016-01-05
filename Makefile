@@ -3,26 +3,22 @@
 
 ###################################################################
 
+include Makefile.inc
+
 VER := 0
 
 MODE ?= debug
 
 ###################################################################
 
-BOOST_PATH := $(shell echo $$BOOST_PATH)
-
-ifeq (,$(BOOST_PATH))
-    $(error 'please define path to boost $$BOOST_PATH')
-endif
+GDK_LIB=$(shell pkg-config --libs dbus-1)
+EXT_LIBS=$(GDK_LIB)
 
 ###################################################################
 
-BOOST_INC=$(BOOST_PATH)
-BOOST_LIB=$(BOOST_PATH)/stage/lib
+PROJECT := calman
 
-###################################################################
-
-LIBNAME=libcalman
+LIBNAME=lib$(PROJECT)
 
 ###################################################################
 
@@ -32,7 +28,6 @@ ifeq "$(MODE)" "debug"
 
     CFLAGS := -Wall -std=c++0x -ggdb -g3
     LFLAGS := -Wall -lstdc++ -lrt -ldl -lm -g
-#    LFLAGS_TEST := -Wall -lstdc++ -lrt -ldl -g -L. $(BINDIR)/$(LIBNAME).a $(BINDIR)/libutils.a -lm
     LFLAGS_TEST := -Wall -lstdc++ -lrt -ldl -g -L. $(BINDIR)/$(LIBNAME).a -lm
 
     TARGET=example
@@ -42,7 +37,6 @@ else
 
     CFLAGS := -Wall -std=c++0x
     LFLAGS := -Wall -lstdc++ -lrt -ldl -lm
-#    LFLAGS_TEST := -Wall -lstdc++ -lrt -ldl -L. $(BINDIR)/$(LIBNAME).a $(BINDIR)/libutils.a -lm
     LFLAGS_TEST := -Wall -lstdc++ -lrt -ldl -L. $(BINDIR)/$(LIBNAME).a -lm
 
     TARGET=example
@@ -50,36 +44,17 @@ endif
 
 ###################################################################
 
-WARN = -W -Wall -Wshadow -Wreturn-type -Wcomment -Wtrigraphs -Wformat -Wparentheses -Wpointer-arith -Wuninitialized -O
-CDBG = -g $(CWARN) -fno-inline
-
-###################################################################
-
-CC=gcc
-
-LDSHARED=gcc
-CPP=gcc -E
-INCL = -I$(BOOST_INC) -I.
+#INCL = -I$(BOOST_INC) -I.
+INCL = -I.
 
 
 STATICLIB=$(LIBNAME).a
-SHAREDLIB=
-SHAREDLIBV=
-SHAREDLIBM=
-LIBS=$(STATICLIB) $(SHAREDLIBV)
-
-AR=ar rc
-RANLIB=ranlib
-LDCONFIG=ldconfig
-LDSHAREDLIBC=-lc
-TAR=tar
-SHELL=/bin/sh
-EXE=
-
-#vpath %.cpp .
 
 SRCC = call.cpp call_manager.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
+
+LIB_NAMES = dialer skype_service skype_io utils scheduler
+LIBS = $(patsubst %,$(BINDIR)/lib%.a,$(LIB_NAMES))
 
 all: static
 
@@ -98,15 +73,19 @@ $(BINDIR)/$(STATICLIB): $(OBJS)
 
 $(OBJDIR)/%.o: %.cpp
 	@echo compiling $<
-	$(CC) $(CFLAGS) $(CDBG) -DPIC -c -o $@ $< $(INCL)
+	$(CC) $(CFLAGS) -DPIC -c -o $@ $< $(INCL)
 
 $(TARGET): $(BINDIR) $(BINDIR)/$(TARGET)
 	ln -sf $(BINDIR)/$(TARGET) $(TARGET)
 	@echo "$@ uptodate - ${MODE}"
 
-$(BINDIR)/$(TARGET): $(OBJDIR)/$(TARGET).o $(OBJS) $(BINDIR)/$(STATICLIB)
-	$(CC) $(CFLAGS) $(CDBG) -o $@ $(OBJDIR)/$(TARGET).o $(LFLAGS_TEST)
-	
+$(BINDIR)/$(TARGET): $(OBJDIR)/$(TARGET).o $(OBJS) $(BINDIR)/$(STATICLIB) $(LIB_NAMES)
+	$(CC) $(CFLAGS) -o $@ $(OBJDIR)/$(TARGET).o $(BINDIR)/$(LIBNAME).a $(LIBS) $(EXT_LIBS) $(LFLAGS_TEST)
+
+$(LIB_NAMES):
+	make -C ../$@
+	ln -sf ../../$@/$(BINDIR)/lib$@.a $(BINDIR)
+
 $(BINDIR):
 	@ mkdir -p $(OBJDIR)
 	@ mkdir -p $(BINDIR)
@@ -114,3 +93,7 @@ $(BINDIR):
 clean:
 	#rm $(OBJDIR)/*.o *~ $(TARGET)
 	rm $(OBJDIR)/*.o $(TARGET) $(BINDIR)/$(TARGET) $(BINDIR)/$(STATICLIB)
+
+cleanall: clean
+
+.PHONY: all $(LIB_NAMES)
