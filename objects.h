@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3077 $ $Date:: 2015-12-30 #$ $Author: serge $
+// $Revision: 3107 $ $Date:: 2016-01-06 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -90,6 +90,15 @@ struct CallDuration: public CallbackObject
 
 struct Failed: public CallbackObject
 {
+    enum type_e
+    {
+        FAILED,
+        REFUSED,
+        BUSY,
+        NOANSWER
+    };
+
+    type_e          type;
     uint32_t        errorcode;
     std::string     descr;
 };
