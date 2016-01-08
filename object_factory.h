@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3107 $ $Date:: 2016-01-06 #$ $Author: serge $
+// $Revision: 3109 $ $Date:: 2016-01-06 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
@@ -102,7 +102,7 @@ inline CallDuration *create_call_duration( uint32_t job_id, uint32_t t )
     return res;
 }
 
-inline Failed *create_failed( uint32_t job_id, uint32_t type, uint32_t errorcode, const std::string & descr )
+inline Failed *create_failed( uint32_t job_id, Failed::type_e type, uint32_t errorcode, const std::string & descr )
 {
     auto res = create_message_t<Failed>( job_id );
 

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3096 $ $Date:: 2016-01-04 #$ $Author: serge $
+// $Revision: 3110 $ $Date:: 2016-01-06 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -315,7 +315,8 @@ void Call::handle( const voip_service::Failed * obj )
 
     trace_state_switch();
 
-    callback_consume( create_failed( parent_job_id_, obj->errorcode, obj->descr ) );
+    callback_consume( create_failed( parent_job_id_,
+            decode_failure_reason( obj->type ), obj->errorcode, obj->descr ) );
 }
 
 void Call::handle( const voip_service::ConnectionLost * obj )
@@ -435,6 +436,15 @@ uint32_t Call::get_next_request_id()
     return ++id;
 }
 
+Failed::type_e Call::decode_failure_reason( voip_service::Failed::type_e type )
+{
+    if( type == voip_service::Failed::REFUSED )
+        return Failed::REFUSED;
+    else if( type == voip_service::Failed::BUSY )
+        return Failed::BUSY;
+
+    return Failed::FAILED;
+}
 
 
 NAMESPACE_CALMAN_END

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3108 $ $Date:: 2016-01-06 #$ $Author: serge $
+// $Revision: 3110 $ $Date:: 2016-01-06 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -100,7 +100,7 @@ private:
     void callback_consume( const CallbackObject * req );
 
     static uint32_t get_next_request_id();
-    static uint32_t decode_failure_reason();
+    static Failed::type_e decode_failure_reason( voip_service::Failed::type_e type );
 
 private:
 
