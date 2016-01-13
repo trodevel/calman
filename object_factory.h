@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3109 $ $Date:: 2016-01-06 #$ $Author: serge $
+// $Revision: 3184 $ $Date:: 2016-01-13 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
@@ -98,6 +98,15 @@ inline CallDuration *create_call_duration( uint32_t job_id, uint32_t t )
     CallDuration *res = create_message_t<CallDuration>( job_id );
 
     res->t  = t;
+
+    return res;
+}
+
+inline DtmfTone *create_dtmf_tone( uint32_t job_id, DtmfTone::tone_e tone )
+{
+    auto * res = create_message_t<DtmfTone>( job_id );
+
+    res->tone       = tone;
 
     return res;
 }

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3107 $ $Date:: 2016-01-06 #$ $Author: serge $
+// $Revision: 3183 $ $Date:: 2016-01-13 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -86,6 +86,32 @@ struct Connected: public CallbackObject
 struct CallDuration: public CallbackObject
 {
     uint32_t t;
+};
+
+
+struct DtmfTone: public CallbackObject
+{
+    enum tone_e
+    {
+        TONE_0,
+        TONE_1,
+        TONE_2,
+        TONE_3,
+        TONE_4,
+        TONE_5,
+        TONE_6,
+        TONE_7,
+        TONE_8,
+        TONE_9,
+        TONE_A,
+        TONE_B,
+        TONE_C,
+        TONE_D,
+        TONE_STAR,
+        TONE_HASH,
+    };
+
+    tone_e          tone;
 };
 
 struct Failed: public CallbackObject
