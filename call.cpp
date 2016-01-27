@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3110 $ $Date:: 2016-01-06 #$ $Author: serge $
+// $Revision: 3295 $ $Date:: 2016-01-26 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -373,6 +373,23 @@ void Call::handle( const voip_service::PlayFileResponse * obj )
     callback_consume( create_message_t<PlayFileResponse>( parent_job_id_ ) );
 }
 
+void Call::handle( const voip_service::DtmfTone * obj )
+{
+    MUTEX_SCOPE_LOCK( mutex_ );
+
+    if( state_ != CONNECTED )
+    {
+        dummy_log_warn( MODULENAME, "handle: DtmfTone: unexpected in state %s, ignoring", to_c_str( state_ ) );
+        return;
+    }
+
+    dummy_log_debug( MODULENAME, "handle DtmfTone: %u", obj->tone );
+
+    auto tone = decode_tone( obj->tone );
+
+    callback_consume( create_dtmf_tone( parent_job_id_, tone ) );
+}
+
 void Call::trace_state_switch() const
 {
     dummy_log_debug( MODULENAME, "switched to %s", to_c_str( state_ ) );
@@ -446,5 +463,36 @@ Failed::type_e Call::decode_failure_reason( voip_service::Failed::type_e type )
     return Failed::FAILED;
 }
 
+DtmfTone::tone_e Call::decode_tone( voip_service::DtmfTone::tone_e tone )
+{
+    static const DtmfTone::tone_e table[] =
+    {
+        DtmfTone::tone_e::TONE_0,
+        DtmfTone::tone_e::TONE_1,
+        DtmfTone::tone_e::TONE_2,
+        DtmfTone::tone_e::TONE_3,
+        DtmfTone::tone_e::TONE_4,
+        DtmfTone::tone_e::TONE_5,
+        DtmfTone::tone_e::TONE_6,
+        DtmfTone::tone_e::TONE_7,
+        DtmfTone::tone_e::TONE_8,
+        DtmfTone::tone_e::TONE_9,
+        DtmfTone::tone_e::TONE_A,
+        DtmfTone::tone_e::TONE_B,
+        DtmfTone::tone_e::TONE_C,
+        DtmfTone::tone_e::TONE_D,
+        DtmfTone::tone_e::TONE_STAR,
+        DtmfTone::tone_e::TONE_HASH
+    };
+
+    if(
+            tone >= voip_service::DtmfTone::tone_e::TONE_0 &&
+            tone <= voip_service::DtmfTone::tone_e::TONE_HASH )
+    {
+        return table[ static_cast<uint16_t>( tone ) ];
+    }
+
+    return DtmfTone::tone_e::TONE_A;
+}
 
 NAMESPACE_CALMAN_END

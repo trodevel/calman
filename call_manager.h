@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3079 $ $Date:: 2015-12-30 #$ $Author: serge $
+// $Revision: 3293 $ $Date:: 2016-01-26 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -110,6 +110,7 @@ private:
     void handle( const voip_service::ConnectionLost * obj );
     void handle( const voip_service::Failed * obj );
     void handle( const voip_service::PlayFileResponse * obj );
+    void handle( const voip_service::DtmfTone * obj );
 
     template <class _OBJ>
     void forward_to_call( const _OBJ * obj );

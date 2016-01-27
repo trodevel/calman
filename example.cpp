@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3097 $ $Date:: 2016-01-04 #$ $Author: serge $
+// $Revision: 3296 $ $Date:: 2016-01-26 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -35,6 +35,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../skype_service/skype_service.h"     // SkypeService
 #include "../utils/dummy_logger.h"      // dummy_log_set_log_level
 #include "../scheduler/scheduler.h"     // Scheduler
+#include "../tcp_dtmf_detector/tcp_dtmf_detector.h"  // tcp_dtmf_detector
 
 namespace sched
 {
@@ -44,9 +45,11 @@ extern unsigned int MODULE_ID;
 class Callback: virtual public calman::ICallManagerCallback
 {
 public:
-    Callback( calman::ICallManager * calman, sched::Scheduler * sched  ):
+    Callback( calman::ICallManager * calman, sched::Scheduler * sched,
+            tcp_dtmf_detector::TcpDtmfDetector * detector ):
         calman_( calman ),
-        sched_( sched )
+        sched_( sched ),
+        detector_( detector )
     {
     }
 
@@ -107,6 +110,14 @@ public:
                     << " job_id " << dynamic_cast< const calman::CallDuration *>( req )->job_id
                     << std::endl;
         }
+        else if( typeid( *req ) == typeid( calman::DtmfTone ) )
+        {
+            std::cout << "got DtmfTone"
+                    << " job_id " << dynamic_cast< const calman::DtmfTone *>( req )->job_id
+                    << " tone " << static_cast<uint16_t>(
+                            dynamic_cast< const calman::DtmfTone *>( req )->tone )
+                    << std::endl;
+        }
         else if( typeid( *req ) == typeid( calman::PlayFileResponse ) )
         {
             std::cout << "got PlayFileResponse"
@@ -146,6 +157,7 @@ public:
 
         std::cout << "exiting ..." << std::endl;
 
+        detector_->shutdown();
         sched_->shutdown();
     }
 
@@ -197,6 +209,7 @@ private:
 private:
     calman::ICallManager        * calman_;
     sched::Scheduler            * sched_;
+    tcp_dtmf_detector::TcpDtmfDetector  * detector_;
 };
 
 void scheduler_thread( sched::Scheduler * sched )
@@ -212,6 +225,9 @@ int main()
     dialer::Dialer              dialer;
     calman::CallManager         calman;
     sched::Scheduler            sched;
+    tcp_dtmf_detector::TcpDtmfDetector detector( 16000 );
+
+    uint16_t                    port = 3217;
 
     calman::Config              cfg;
 
@@ -232,7 +248,7 @@ int main()
     }
 
     {
-        bool b = dialer.init( & sio, & sched );
+        bool b = dialer.init( & sio, & sched, port );
         if( !b )
         {
             std::cout << "cannot initialize Dialer" << std::endl;
@@ -254,7 +270,9 @@ int main()
         sio.register_callback( & dialer );
     }
 
-    Callback test( & calman, & sched );
+    detector.init( &dialer, port );
+
+    Callback test( & calman, & sched, & detector );
     calman.register_callback( &test );
 
     dialer.start();
@@ -264,6 +282,7 @@ int main()
 
     tg.push_back( std::thread( std::bind( &Callback::control_thread, &test ) ) );
     tg.push_back( std::thread( std::bind( &scheduler_thread, &sched ) ) );
+    tg.push_back( std::thread( std::bind( &tcp_dtmf_detector::TcpDtmfDetector::worker, &detector ) ) );
 
     for( auto & t : tg )
         t.join();

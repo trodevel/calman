@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3183 $ $Date:: 2016-01-13 #$ $Author: serge $
+// $Revision: 3291 $ $Date:: 2016-01-26 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -93,7 +93,7 @@ struct DtmfTone: public CallbackObject
 {
     enum tone_e
     {
-        TONE_0,
+        TONE_0 = 0,
         TONE_1,
         TONE_2,
         TONE_3,

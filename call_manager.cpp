@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3091 $ $Date:: 2016-01-04 #$ $Author: serge $
+// $Revision: 3293 $ $Date:: 2016-01-26 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -169,6 +169,10 @@ void CallManager::handle( const servt::IObject* req )
     else if( typeid( *req ) == typeid( voip_service::PlayFileResponse ) )
     {
         handle( dynamic_cast< const voip_service::PlayFileResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::DtmfTone ) )
+    {
+        handle( dynamic_cast< const voip_service::DtmfTone *>( req ) );
     }
     else
     {
@@ -399,6 +403,11 @@ void CallManager::handle( const voip_service::Failed * obj )
 }
 
 void CallManager::handle( const voip_service::PlayFileResponse * obj )
+{
+    forward_to_call( obj );
+}
+
+void CallManager::handle( const voip_service::DtmfTone * obj )
 {
     forward_to_call( obj );
 }

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3110 $ $Date:: 2016-01-06 #$ $Author: serge $
+// $Revision: 3294 $ $Date:: 2016-01-26 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -86,6 +86,7 @@ public:
     void handle( const voip_service::DropResponse * obj );
     void handle( const voip_service::Failed * obj );
     void handle( const voip_service::PlayFileResponse * obj );
+    void handle( const voip_service::DtmfTone * obj );
 
 private:
     void trace_state_switch() const;
@@ -101,6 +102,8 @@ private:
 
     static uint32_t get_next_request_id();
     static Failed::type_e decode_failure_reason( voip_service::Failed::type_e type );
+
+    static DtmfTone::tone_e decode_tone( voip_service::DtmfTone::tone_e tone );
 
 private:
 
