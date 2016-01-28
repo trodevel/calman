@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3296 $ $Date:: 2016-01-26 #$ $Author: serge $
+// $Revision: 3301 $ $Date:: 2016-01-27 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -31,11 +31,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "call_manager.h"               // calman::CallManager
 #include "object_factory.h"             // create_message_t
 
-#include "../dialer/dialer.h"                   // dialer::Dialer
+#include "../dialer_detect/dialer_detector.h"   // dialer_detector::DialerDetector
 #include "../skype_service/skype_service.h"     // SkypeService
 #include "../utils/dummy_logger.h"      // dummy_log_set_log_level
 #include "../scheduler/scheduler.h"     // Scheduler
-#include "../tcp_dtmf_detector/tcp_dtmf_detector.h"  // tcp_dtmf_detector
 
 namespace sched
 {
@@ -45,11 +44,9 @@ extern unsigned int MODULE_ID;
 class Callback: virtual public calman::ICallManagerCallback
 {
 public:
-    Callback( calman::ICallManager * calman, sched::Scheduler * sched,
-            tcp_dtmf_detector::TcpDtmfDetector * detector ):
+    Callback( calman::ICallManager * calman, sched::Scheduler * sched ):
         calman_( calman ),
-        sched_( sched ),
-        detector_( detector )
+        sched_( sched )
     {
     }
 
@@ -157,7 +154,6 @@ public:
 
         std::cout << "exiting ..." << std::endl;
 
-        detector_->shutdown();
         sched_->shutdown();
     }
 
@@ -209,7 +205,6 @@ private:
 private:
     calman::ICallManager        * calman_;
     sched::Scheduler            * sched_;
-    tcp_dtmf_detector::TcpDtmfDetector  * detector_;
 };
 
 void scheduler_thread( sched::Scheduler * sched )
@@ -221,11 +216,10 @@ int main()
 {
     dummy_logger::set_log_level( log_levels_log4j::DEBUG );
 
-    skype_service::SkypeService sio;
-    dialer::Dialer              dialer;
-    calman::CallManager         calman;
-    sched::Scheduler            sched;
-    tcp_dtmf_detector::TcpDtmfDetector detector( 16000 );
+    skype_service::SkypeService     sio;
+    dialer_detector::DialerDetector dialer( 16000 );
+    calman::CallManager             calman;
+    sched::Scheduler                sched;
 
     uint16_t                    port = 3217;
 
@@ -270,9 +264,7 @@ int main()
         sio.register_callback( & dialer );
     }
 
-    detector.init( &dialer, port );
-
-    Callback test( & calman, & sched, & detector );
+    Callback test( & calman, & sched );
     calman.register_callback( &test );
 
     dialer.start();
@@ -282,12 +274,11 @@ int main()
 
     tg.push_back( std::thread( std::bind( &Callback::control_thread, &test ) ) );
     tg.push_back( std::thread( std::bind( &scheduler_thread, &sched ) ) );
-    tg.push_back( std::thread( std::bind( &tcp_dtmf_detector::TcpDtmfDetector::worker, &detector ) ) );
 
     for( auto & t : tg )
         t.join();
 
-    dialer.Dialer::shutdown();
+    dialer.DialerDetector::shutdown();
     calman.shutdown();
 
     std::cout << "Done! =)" << std::endl;

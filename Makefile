@@ -69,7 +69,7 @@ STATICLIB=$(LIBNAME).a
 SRCC = call.cpp call_manager.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
 
-LIB_NAMES = dialer skype_service skype_io utils scheduler tcp_dtmf_detector tcp_data_receiver dtmf_detector
+LIB_NAMES = dialer_detect dialer skype_service skype_io utils scheduler tcp_dtmf_detector tcp_data_receiver dtmf_detector
 LIBS = $(patsubst %,$(BINDIR)/lib%.a,$(LIB_NAMES))
 
 all: static
