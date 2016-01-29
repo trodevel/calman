@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3293 $ $Date:: 2016-01-26 #$ $Author: serge $
+// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -35,7 +35,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../voip_io/i_voip_service_callback.h"     // IVoipServiceCallback
 #include "../threcon/i_controllable.h"      // IControllable
 #include "../jobman/job_man_t.h"            // JobManT
-#include "../servt/server_t.h"              // ServerT
+#include "../workt/worker_t.h"              // WorkerT
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
@@ -50,14 +50,14 @@ class ICallManagerCallback;
 
 class CallManager;
 
-typedef servt::ServerT< const servt::IObject*, CallManager> ServerBase;
+typedef workt::WorkerT< const workt::IObject*, CallManager> WorkerBase;
 
-class CallManager: public ServerBase,
+class CallManager: public WorkerBase,
     virtual public ICallManager,
     virtual public voip_service::IVoipServiceCallback,
     virtual public threcon::IControllable
 {
-    friend ServerBase;
+    friend WorkerBase;
 
 public:
     enum state_e
@@ -91,7 +91,7 @@ private:
 private:
 
     // ServerT interface
-    void handle( const servt::IObject* req );
+    void handle( const workt::IObject* req );
 
     // ICallManager interface
     void handle( const InitiateCallRequest * req );

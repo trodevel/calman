@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3291 $ $Date:: 2016-01-26 #$ $Author: serge $
+// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -28,13 +28,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <string>                   // std::string
 #include <cstdint>                  // uint32_t
 
-#include "../servt/i_object.h"      // IObject
+#include "../workt/i_object.h"      // IObject
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
 NAMESPACE_CALMAN_START
 
-struct Object: public servt::IObject
+struct Object: public workt::IObject
 {
     uint32_t        job_id;
 };

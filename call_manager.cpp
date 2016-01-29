@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3293 $ $Date:: 2016-01-26 #$ $Author: serge $
+// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -51,7 +51,7 @@ const char* to_c_str( CallManager::state_e s )
 }
 
 CallManager::CallManager():
-    ServerBase( this ),
+    WorkerBase( this ),
     state_( IDLE ), voips_( nullptr ), callback_( nullptr ), curr_job_( 0L )
 {
 }
@@ -102,15 +102,15 @@ bool CallManager::register_callback( ICallManagerCallback * callback )
 
 void CallManager::consume( const Object* obj )
 {
-    ServerBase::consume( obj );
+    WorkerBase::consume( obj );
 }
 
 void CallManager::consume( const voip_service::CallbackObject* obj )
 {
-    ServerBase::consume( obj );
+    WorkerBase::consume( obj );
 }
 
-void CallManager::handle( const servt::IObject* req )
+void CallManager::handle( const workt::IObject* req )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -340,7 +340,7 @@ bool CallManager::shutdown()
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    ServerBase::shutdown();
+    WorkerBase::shutdown();
 
     return true;
 }
