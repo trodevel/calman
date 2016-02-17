@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3306 $ $Date:: 2016-01-28 #$ $Author: serge $
+// $Revision: 3421 $ $Date:: 2016-02-16 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -28,7 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <string>                   // std::string
 #include <mutex>                    // std::mutex
 #include <memory>                   // std::shared_ptr
-#include "../utils/types.h"         // uint32_t
+#include <cstdint>                  // uint32_t
 #include "objects.h"                // DropRequest
 #include "../voip_io/objects.h"     // voip_service::Dial
 
@@ -103,7 +103,7 @@ private:
     static uint32_t get_next_request_id();
     static Failed::type_e decode_failure_reason( voip_service::Failed::type_e type );
 
-    static DtmfTone::tone_e decode_tone( voip_service::DtmfTone::tone_e tone );
+    static dtmf_tools::tone_e decode_tone( voip_service::DtmfTone::tone_e tone );
 
 private:
 

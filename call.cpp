@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3306 $ $Date:: 2016-01-28 #$ $Author: serge $
+// $Revision: 3384 $ $Date:: 2016-02-08 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -463,26 +463,26 @@ Failed::type_e Call::decode_failure_reason( voip_service::Failed::type_e type )
     return Failed::FAILED;
 }
 
-DtmfTone::tone_e Call::decode_tone( voip_service::DtmfTone::tone_e tone )
+dtmf_tools::tone_e Call::decode_tone( voip_service::DtmfTone::tone_e tone )
 {
-    static const DtmfTone::tone_e table[] =
+    static const dtmf_tools::tone_e table[] =
     {
-        DtmfTone::tone_e::TONE_0,
-        DtmfTone::tone_e::TONE_1,
-        DtmfTone::tone_e::TONE_2,
-        DtmfTone::tone_e::TONE_3,
-        DtmfTone::tone_e::TONE_4,
-        DtmfTone::tone_e::TONE_5,
-        DtmfTone::tone_e::TONE_6,
-        DtmfTone::tone_e::TONE_7,
-        DtmfTone::tone_e::TONE_8,
-        DtmfTone::tone_e::TONE_9,
-        DtmfTone::tone_e::TONE_A,
-        DtmfTone::tone_e::TONE_B,
-        DtmfTone::tone_e::TONE_C,
-        DtmfTone::tone_e::TONE_D,
-        DtmfTone::tone_e::TONE_STAR,
-        DtmfTone::tone_e::TONE_HASH
+        dtmf_tools::tone_e::TONE_0,
+        dtmf_tools::tone_e::TONE_1,
+        dtmf_tools::tone_e::TONE_2,
+        dtmf_tools::tone_e::TONE_3,
+        dtmf_tools::tone_e::TONE_4,
+        dtmf_tools::tone_e::TONE_5,
+        dtmf_tools::tone_e::TONE_6,
+        dtmf_tools::tone_e::TONE_7,
+        dtmf_tools::tone_e::TONE_8,
+        dtmf_tools::tone_e::TONE_9,
+        dtmf_tools::tone_e::TONE_A,
+        dtmf_tools::tone_e::TONE_B,
+        dtmf_tools::tone_e::TONE_C,
+        dtmf_tools::tone_e::TONE_D,
+        dtmf_tools::tone_e::TONE_STAR,
+        dtmf_tools::tone_e::TONE_HASH
     };
 
     if(
@@ -492,7 +492,7 @@ DtmfTone::tone_e Call::decode_tone( voip_service::DtmfTone::tone_e tone )
         return table[ static_cast<uint16_t>( tone ) ];
     }
 
-    return DtmfTone::tone_e::TONE_A;
+    return dtmf_tools::tone_e::TONE_A;
 }
 
 NAMESPACE_CALMAN_END

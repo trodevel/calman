@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
+// $Revision: 3384 $ $Date:: 2016-02-08 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -29,6 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <cstdint>                  // uint32_t
 
 #include "../workt/i_object.h"      // IObject
+#include "../dtmf_tools/dtmf_enum.h"        // dtmf_tools::tone_e
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
@@ -91,27 +92,7 @@ struct CallDuration: public CallbackObject
 
 struct DtmfTone: public CallbackObject
 {
-    enum tone_e
-    {
-        TONE_0 = 0,
-        TONE_1,
-        TONE_2,
-        TONE_3,
-        TONE_4,
-        TONE_5,
-        TONE_6,
-        TONE_7,
-        TONE_8,
-        TONE_9,
-        TONE_A,
-        TONE_B,
-        TONE_C,
-        TONE_D,
-        TONE_STAR,
-        TONE_HASH,
-    };
-
-    tone_e          tone;
+    dtmf_tools::tone_e  tone;
 };
 
 struct Failed: public CallbackObject
