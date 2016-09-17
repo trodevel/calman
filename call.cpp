@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3384 $ $Date:: 2016-02-08 #$ $Author: serge $
+// $Revision: 4406 $ $Date:: 2016-09-17 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -102,8 +102,6 @@ void Call::initiate()
 
     current_req_id_ = get_next_request_id();
 
-    callback_consume( create_message_t<InitiateCallResponse>( parent_job_id_ ) );
-
     voips_->consume( voip_service::create_initiate_call_request( current_req_id_, party_ ) );
 
     state_  = WAITING_INITIATE_CALL_RESP;
@@ -165,6 +163,8 @@ void Call::handle( const voip_service::InitiateCallResponse * obj )
         ASSERT( 0 );
     }
 
+    callback_consume( create_message_t<InitiateCallResponse>( parent_job_id_ ) );
+
     call_id_    = obj->call_id;
     state_      = WAITING_CONNECTION;
 
@@ -179,7 +179,7 @@ void Call::handle( const voip_service::ErrorResponse * obj )
 
     if( state_ == WAITING_INITIATE_CALL_RESP )
     {
-        send_error_response( "failed to initiate call" );
+        send_error_response( "failed to initiate call: " + obj->descr );
         state_ = DONE;
         trace_state_switch();
     }
