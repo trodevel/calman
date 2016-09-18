@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
+// $Revision: 3545 $ $Date:: 2016-03-04 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -332,6 +332,13 @@ void CallManager::handle( const PlayFileRequest * req )
 
         send_reject_response( req->job_id, "job is not active" );
     }
+}
+
+void CallManager::start()
+{
+    dummy_log_debug( MODULENAME, "start()" );
+
+    WorkerBase::start();
 }
 
 bool CallManager::shutdown()

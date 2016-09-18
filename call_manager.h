@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
+// $Revision: 3545 $ $Date:: 2016-03-04 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -79,6 +79,8 @@ public:
 
     // interface IVoipServiceCallback
     void consume( const voip_service::CallbackObject * obj );
+
+    void start();
 
     // interface threcon::IControllable
     bool shutdown();

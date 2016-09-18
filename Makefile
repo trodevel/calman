@@ -22,7 +22,7 @@ endif
 BOOST_INC=$(BOOST_PATH)
 BOOST_LIB_PATH=$(BOOST_PATH)/stage/lib
 
-BOOST_LIB_NAMES := system
+BOOST_LIB_NAMES := system regex
 BOOST_LIBS = $(patsubst %,$(BOOST_LIB_PATH)/libboost_%.a,$(BOOST_LIB_NAMES))
 
 ###################################################################
