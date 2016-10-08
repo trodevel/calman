@@ -1,0 +1,173 @@
+# Call.
+#
+# Copyright (C) 2016 Sergey Kolevatov
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+
+# $Id: Call.gv 4737 2016-10-08 12:50:21Z serge $
+#
+# execute: FL=Call; dot -l sdl.ps -Tps $FL.gv -o $FL.ps; ps2pdf $FL.ps $FL.pdf
+
+digraph Call
+{
+
+label="$Id: Call.gv 4737 2016-10-08 12:50:21Z serge $";
+
+size="7,7";
+ratio=fill;
+splines=true;
+node [peripheries=0 style=filled fillcolor=white]
+
+######################################################
+# States
+
+START                      [ shape = sdl_start ]
+IDLE                       [ shape = sdl_state fillcolor=yellow ]
+W_INITIATE_CALL_RESPONSE   [ shape = sdl_state fillcolor=yellow ]
+W_DIALER_FREE              [ shape = sdl_state fillcolor=yellow ]
+W_CONNECTED                [ shape = sdl_state fillcolor=yellow ]
+CONNECTED                  [ shape = sdl_state fillcolor=yellow ]
+CONNECTED_BUSY             [ shape = sdl_state fillcolor=yellow ]
+WRONG_CONNECTED            [ shape = sdl_state fillcolor=yellow ]
+CANCELLED_IN_C             [ shape = sdl_state fillcolor=yellow ]
+CANCELLED_IN_CB            [ shape = sdl_state fillcolor=yellow ]
+CANCELLED_IN_WICR          [ shape = sdl_state fillcolor=yellow ]
+CANCELLED_IN_WC            [ shape = sdl_state fillcolor=yellow ]
+DONE                       [ shape = sdl_state fillcolor=yellow ]
+
+######################################################
+# Actions
+
+IDLE__INITIATE                    [ label="initiate()"                      shape = sdl_input_from_left ]
+IDLE__DROP_REQ                    [ label=DropRequest                       shape = sdl_input_from_left fillcolor=brown ]
+IDLE__SEND_DROP_RESP              [ label=DropResponse                      shape = sdl_output_to_left ]
+IDLE__SEND_ICR                    [ label=InitiateCallRequest               shape = sdl_output_to_right ]
+
+W_DIALER_FREE__TIMER              [ label=T                                 shape = sdl_input_from_left ]
+W_DIALER_FREE__DROP_REQ           [ label=DropRequest                       shape = sdl_input_from_left fillcolor=brown ]
+W_DIALER_FREE__SEND_DROP_RESP     [ label=DropResponse                      shape = sdl_output_to_left ]
+
+W_INITIATE_CALL_RESPONSE__ICR        [ label=InitiateCallResponse              shape = sdl_input_from_right fillcolor=pink ]
+W_INITIATE_CALL_RESPONSE__ERROR      [ label=ErrorResponse                     shape = sdl_input_from_right fillcolor=red ]
+W_INITIATE_CALL_RESPONSE__SEND_ERROR [ label=ErrorResponse                     shape = sdl_output_to_left ]
+W_INITIATE_CALL_RESPONSE__SEND_ICR   [ label=InitiateCallResponse              shape = sdl_output_to_left ]
+W_INITIATE_CALL_RESPONSE__REJECT     [ label=RejectResponse                    shape = sdl_input_from_right fillcolor=blue ]
+W_INITIATE_CALL_RESPONSE__SET_T      [ label=T                                 shape = sdl_set ]
+W_INITIATE_CALL_RESPONSE__DROP_REQ   [ label=DropRequest                       shape = sdl_input_from_left fillcolor=brown ]
+
+W_CONNECTED__DROP_REQ              [ label=DropRequest                       shape = sdl_input_from_left fillcolor=brown ]
+W_CONNECTED__SEND_DROP_REQ         [ label=DropRequest                       shape = sdl_output_to_right ]
+W_CONNECTED__CONNECTED             [ label=Connected                         shape = sdl_input_from_right fillcolor=darkgreen ]
+W_CONNECTED__SEND_CONNECTED        [ label=Connected                         shape = sdl_output_to_left ]
+W_CONNECTED__FAILED                [ label=Failed                            shape = sdl_input_from_right fillcolor=orange ]
+W_CONNECTED__SEND_FAILED           [ label=Failed                            shape = sdl_output_to_left ]
+
+CONNECTED__PLAY_FILE_REQ          [ label=PlayFileRequest                   shape = sdl_input_from_left ]
+CONNECTED__SEND_PLAY_FILE_REQ     [ label=PlayFileRequest                   shape = sdl_output_to_right ]
+CONNECTED__DROP_REQ               [ label=DropRequest                       shape = sdl_input_from_left fillcolor=brown ]
+CONNECTED__SEND_DROP_REQ          [ label=DropRequest                       shape = sdl_output_to_right ]
+CONNECTED__CONN_LOST              [ label=ConnectionLost                    shape = sdl_input_from_right fillcolor=green ]
+CONNECTED__SEND_CONN_LOST         [ label=ConnectionLost                    shape = sdl_output_to_left ]
+
+CONNECTED_BUSY__PLAY_FILE_REQ     [ label=PlayFileRequest                   shape = sdl_input_from_left ]
+CONNECTED_BUSY__SEND_REJECT       [ label=RejectResponse                    shape = sdl_output_to_left ]
+CONNECTED_BUSY__ERROR             [ label=ErrorResponse                     shape = sdl_input_from_right fillcolor=red ]
+CONNECTED_BUSY__SEND_ERROR        [ label=ErrorResponse                     shape = sdl_output_to_left ]
+CONNECTED_BUSY__DROP_REQ          [ label=DropRequest                       shape = sdl_input_from_left fillcolor=brown ]
+CONNECTED_BUSY__SEND_DROP_REQ     [ label=DropRequest                       shape = sdl_output_to_right ]
+CONNECTED_BUSY__CONN_LOST         [ label=ConnectionLost                    shape = sdl_input_from_right fillcolor=green ]
+CONNECTED_BUSY__PLAY_FILE_RESP    [ label=PlayFileResponse                  shape = sdl_input_from_right fillcolor=orange ]
+CONNECTED_BUSY__SEND_PLAY_FILE_RESP  [ label=PlayFileResponse                  shape = sdl_output_to_left ]
+
+WRONG_CONNECTED__DROP_RESP        [ label=DropResponse                      shape = sdl_input_from_right fillcolor=lightblue ]
+WRONG_CONNECTED__CONN_LOST        [ label=ConnectionLost                    shape = sdl_input_from_right fillcolor=green ]
+WRONG_CONNECTED__SEND_DROP_RESP   [ label=DropResponse                      shape = sdl_output_to_left ]
+
+CANCELLED_IN_C__DROP_RESP         [ label=DropResponse                      shape = sdl_input_from_right fillcolor=lightblue ]
+CANCELLED_IN_C__SEND_DROP_RESP    [ label=DropResponse                      shape = sdl_output_to_left ]
+CANCELLED_IN_C__CONN_LOST         [ label=ConnectionLost                    shape = sdl_input_from_right fillcolor=green ]
+
+CANCELLED_IN_CB__DROP_RESP        [ label=DropResponse                      shape = sdl_input_from_right fillcolor=lightblue ]
+CANCELLED_IN_CB__ERROR            [ label=ErrorResponse                     shape = sdl_input_from_right fillcolor=red ]
+CANCELLED_IN_CB__PLAY_FILE_RESP   [ label=PlayFileResponse                  shape = sdl_input_from_right fillcolor=orange ]
+CANCELLED_IN_CB__CONN_LOST        [ label=ConnectionLost                    shape = sdl_input_from_right fillcolor=green ]
+
+W_DIALER_FREE__TIMER              [ label=T                                 shape = sdl_input_from_left ]
+
+CANCELLED_IN_WICR__ERROR          [ label=ErrorResponse                     shape = sdl_input_from_right fillcolor=red ]
+CANCELLED_IN_WICR__REJECT         [ label=RejectResponse                    shape = sdl_input_from_right fillcolor=blue ]
+CANCELLED_IN_WICR__ICR            [ label=InitiateCallResponse              shape = sdl_input_from_right fillcolor=pink ]
+CANCELLED_IN_WICR__DROP_RESP      [ label=DropResponse                      shape = sdl_input_from_right fillcolor=lightblue ]
+CANCELLED_IN_WICR__SEND_DROP_RESP [ label=DropResponse                      shape = sdl_output_to_left ]
+
+CANCELLED_IN_WC__CONNECTED        [ label=Connected                         shape = sdl_input_from_right fillcolor=darkgreen ]
+CANCELLED_IN_WC__FAILED           [ label=Failed                            shape = sdl_input_from_right fillcolor=orange ]
+CANCELLED_IN_WC__DROP_RESP        [ label=DropResponse                      shape = sdl_input_from_right fillcolor=lightblue ]
+CANCELLED_IN_WC__SEND_DROP_RESP   [ label=DropResponse                      shape = sdl_output_to_left ]
+
+
+######################################################
+# Transitions
+
+START -> IDLE
+
+IDLE -> IDLE__INITIATE       -> IDLE__SEND_ICR       -> W_INITIATE_CALL_RESPONSE
+IDLE -> IDLE__DROP_REQ       -> IDLE__SEND_DROP_RESP -> DONE
+
+W_DIALER_FREE -> W_DIALER_FREE__TIMER    -> IDLE__SEND_ICR
+W_DIALER_FREE -> W_DIALER_FREE__DROP_REQ -> W_DIALER_FREE__SEND_DROP_RESP -> DONE
+
+W_INITIATE_CALL_RESPONSE -> W_INITIATE_CALL_RESPONSE__ICR      -> W_INITIATE_CALL_RESPONSE__SEND_ICR   -> W_CONNECTED
+W_INITIATE_CALL_RESPONSE -> W_INITIATE_CALL_RESPONSE__ERROR    -> W_INITIATE_CALL_RESPONSE__SEND_ERROR -> DONE
+W_INITIATE_CALL_RESPONSE -> W_INITIATE_CALL_RESPONSE__REJECT   -> W_INITIATE_CALL_RESPONSE__SET_T      -> W_DIALER_FREE
+W_INITIATE_CALL_RESPONSE -> W_INITIATE_CALL_RESPONSE__DROP_REQ -> CANCELLED_IN_WICR
+
+W_CONNECTED -> W_CONNECTED__DROP_REQ  -> W_CONNECTED__SEND_DROP_REQ  -> CANCELLED_IN_WC
+W_CONNECTED -> W_CONNECTED__CONNECTED -> W_CONNECTED__SEND_CONNECTED -> CONNECTED
+W_CONNECTED -> W_CONNECTED__FAILED    -> W_CONNECTED__SEND_FAILED    -> DONE
+
+CONNECTED -> CONNECTED__PLAY_FILE_REQ -> CONNECTED__SEND_PLAY_FILE_REQ -> CONNECTED_BUSY
+CONNECTED -> CONNECTED__DROP_REQ      -> CONNECTED__SEND_DROP_REQ      -> CANCELLED_IN_C
+CONNECTED -> CONNECTED__CONN_LOST     -> CONNECTED__SEND_CONN_LOST     -> DONE
+
+CONNECTED_BUSY -> CONNECTED_BUSY__PLAY_FILE_REQ  -> CONNECTED_BUSY__SEND_REJECT   -> CONNECTED_BUSY
+CONNECTED_BUSY -> CONNECTED_BUSY__ERROR          -> CONNECTED_BUSY__SEND_ERROR    -> CONNECTED
+CONNECTED_BUSY -> CONNECTED_BUSY__DROP_REQ       -> CONNECTED_BUSY__SEND_DROP_REQ -> CANCELLED_IN_CB
+CONNECTED_BUSY -> CONNECTED_BUSY__CONN_LOST      -> CONNECTED__SEND_CONN_LOST
+CONNECTED_BUSY -> CONNECTED_BUSY__PLAY_FILE_RESP -> CONNECTED_BUSY__SEND_PLAY_FILE_RESP -> CONNECTED
+
+
+CANCELLED_IN_C -> CANCELLED_IN_C__DROP_RESP  -> CANCELLED_IN_C__SEND_DROP_RESP -> DONE
+CANCELLED_IN_C -> CANCELLED_IN_C__CONN_LOST  -> CANCELLED_IN_C__SEND_DROP_RESP
+
+
+CANCELLED_IN_CB -> CANCELLED_IN_CB__ERROR          -> CANCELLED_IN_C
+CANCELLED_IN_CB -> CANCELLED_IN_CB__PLAY_FILE_RESP -> CANCELLED_IN_C
+CANCELLED_IN_CB -> CANCELLED_IN_CB__DROP_RESP      -> CANCELLED_IN_C__SEND_DROP_RESP
+CANCELLED_IN_CB -> CANCELLED_IN_CB__CONN_LOST      -> CANCELLED_IN_C__SEND_DROP_RESP
+
+
+CANCELLED_IN_WICR -> CANCELLED_IN_WICR__ERROR     -> CANCELLED_IN_WICR__SEND_DROP_RESP -> DONE
+CANCELLED_IN_WICR -> CANCELLED_IN_WICR__REJECT    -> CANCELLED_IN_WICR__SEND_DROP_RESP
+CANCELLED_IN_WICR -> CANCELLED_IN_WICR__DROP_RESP -> CANCELLED_IN_WICR__SEND_DROP_RESP
+CANCELLED_IN_WICR -> CANCELLED_IN_WICR__ICR       -> W_CONNECTED__SEND_DROP_REQ
+
+CANCELLED_IN_WC -> CANCELLED_IN_WC__CONNECTED -> WRONG_CONNECTED
+CANCELLED_IN_WC -> CANCELLED_IN_WC__FAILED    -> CANCELLED_IN_WC__SEND_DROP_RESP    -> DONE
+CANCELLED_IN_WC -> CANCELLED_IN_WC__DROP_RESP -> CANCELLED_IN_WC__SEND_DROP_RESP
+
+WRONG_CONNECTED -> WRONG_CONNECTED__DROP_RESP -> WRONG_CONNECTED__SEND_DROP_RESP -> DONE
+WRONG_CONNECTED -> WRONG_CONNECTED__CONN_LOST -> WRONG_CONNECTED__SEND_DROP_RESP
+}

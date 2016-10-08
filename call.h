@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3444 $ $Date:: 2016-02-23 #$ $Author: serge $
+// $Revision: 4742 $ $Date:: 2016-10-08 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -46,15 +46,22 @@ class ICallManagerCallback;
 class Call
 {
 public:
-    enum status_e
+    static unsigned int CLASS_ID;
+
+public:
+    enum state_e
     {
-        UNDEF,
         IDLE,
         WAITING_DIALER_FREE,
         WAITING_INITIATE_CALL_RESP,
-        WAITING_CONNECTION,
+        WAITING_CONNECTED,
         CONNECTED,
-        WAITING_DROP_RESPONSE,
+        CONNECTED_BUSY,
+        WRONG_CONNECTED,
+        CANCELLED_IN_WICR,
+        CANCELLED_IN_WC,
+        CANCELLED_IN_C,
+        CANCELLED_IN_CB,
         DONE
     };
 
@@ -66,13 +73,12 @@ public:
         voip_service::IVoipService  * voips );
 
     bool is_completed() const;
-    bool remove() const;
     uint32_t get_parent_job_id() const;
 
     // partly interface ICallManagerCallback
     void initiate();
-    void handle( const PlayFileRequest * req );
-    void handle( const DropRequest * req );
+    void handle( const PlayFileRequest * obj );
+    void handle( const DropRequest * obj );
 
     // partly interface IVoipServiceCallback
     void handle( const voip_service::InitiateCallResponse * obj );
@@ -89,13 +95,10 @@ public:
     void handle( const voip_service::DtmfTone * obj );
 
 private:
+    void next_state( state_e state );
     void trace_state_switch() const;
 
-    void send_reject_due_to_wrong_state();
-    bool send_reject_if_in_request_processing();
-
     void send_error_response( const std::string & descr );
-    void send_reject_response( const std::string & descr );
 
     void validate_and_reset_response_job_id( const voip_service::ResponseObject * resp );
     void callback_consume( const CallbackObject * req );
@@ -111,7 +114,7 @@ private:
 
     std::string             party_;
 
-    status_e                state_;
+    state_e                 state_;
 
     uint32_t                parent_job_id_;
     uint32_t                current_req_id_;
