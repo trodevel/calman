@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3444 $ $Date:: 2016-02-23 #$ $Author: serge $
+// $Revision: 5459 $ $Date:: 2017-01-04 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECT_FACTORY_H
 #define CALMAN_OBJECT_FACTORY_H
@@ -89,15 +89,6 @@ inline PlayFileRequest *create_play_file_request( uint32_t job_id, const std::st
     auto *res = create_message_t<PlayFileRequest>( job_id );
 
     res->filename   = filename;
-
-    return res;
-}
-
-inline CallDuration *create_call_duration( uint32_t job_id, uint32_t t )
-{
-    CallDuration *res = create_message_t<CallDuration>( job_id );
-
-    res->t  = t;
 
     return res;
 }

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3444 $ $Date:: 2016-02-23 #$ $Author: serge $
+// $Revision: 5459 $ $Date:: 2017-01-04 #$ $Author: serge $
 
 #ifndef CALMAN_OBJECTS_H
 #define CALMAN_OBJECTS_H
@@ -83,12 +83,6 @@ struct PlayFileResponse: public CallbackObject
 struct Connected: public CallbackObject
 {
 };
-
-struct CallDuration: public CallbackObject
-{
-    uint32_t t;
-};
-
 
 struct DtmfTone: public CallbackObject
 {

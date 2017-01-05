@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3545 $ $Date:: 2016-03-04 #$ $Author: serge $
+// $Revision: 5474 $ $Date:: 2017-01-04 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -34,7 +34,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "objects.h"                        // InitiateCallRequest, ...
 #include "../voip_io/i_voip_service_callback.h"     // IVoipServiceCallback
 #include "../threcon/i_controllable.h"      // IControllable
-#include "../jobman/job_man_t.h"            // JobManT
 #include "../workt/worker_t.h"              // WorkerT
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START

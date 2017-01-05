@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 4743 $ $Date:: 2016-10-08 #$ $Author: serge $
+// $Revision: 5475 $ $Date:: 2017-01-04 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -327,30 +327,6 @@ void Call::handle( const voip_service::Connected * obj )
 
     case CANCELLED_IN_WC:
         next_state( WRONG_CONNECTED );
-        break;
-
-    default:
-        dummy_log_fatal( CLASS_ID, "%s is unexpected in state %s", typeid( *obj ).name(), to_c_str( state_ ) );
-        ASSERT( 0 );
-        break;
-    }
-}
-
-void Call::handle( const voip_service::CallDuration * obj )
-{
-    dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
-
-    switch( state_ )
-    {
-    case CONNECTED:
-    case CONNECTED_BUSY:
-        callback_consume( create_call_duration( parent_job_id_, obj->t ) );
-        break;
-
-    case CANCELLED_IN_C:
-    case CANCELLED_IN_CB:
         break;
 
     default:

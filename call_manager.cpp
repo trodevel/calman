@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3545 $ $Date:: 2016-03-04 #$ $Author: serge $
+// $Revision: 5459 $ $Date:: 2017-01-04 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -195,6 +195,8 @@ void CallManager::check_call_end()
 
     state_  = IDLE;
     trace_state_switch();
+
+    dummy_log_debug( MODULENAME, "removing call id - %u", curr_job_->get_parent_job_id() );
 
     curr_job_.reset();      // as call finished, curr job can be deleted
 
@@ -397,7 +399,7 @@ void CallManager::handle( const voip_service::Connected * obj )
 }
 void CallManager::handle( const voip_service::CallDuration * obj )
 {
-    forward_to_call( obj );
+    // ignored
 }
 void CallManager::handle( const voip_service::ConnectionLost * obj )
 {

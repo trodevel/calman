@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 4742 $ $Date:: 2016-10-08 #$ $Author: serge $
+// $Revision: 5475 $ $Date:: 2017-01-04 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -87,7 +87,6 @@ public:
     void handle( const voip_service::Dial * obj );
     void handle( const voip_service::Ring * obj );
     void handle( const voip_service::Connected * obj );
-    void handle( const voip_service::CallDuration * obj );
     void handle( const voip_service::ConnectionLost * obj );
     void handle( const voip_service::DropResponse * obj );
     void handle( const voip_service::Failed * obj );

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3306 $ $Date:: 2016-01-28 #$ $Author: serge $
+// $Revision: 5459 $ $Date:: 2017-01-04 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -99,12 +99,6 @@ public:
         {
             std::cout << "got Connected"
                     << " job_id " << dynamic_cast< const calman::Connected *>( req )->job_id
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( calman::CallDuration ) )
-        {
-            std::cout << "got CallDuration"
-                    << " job_id " << dynamic_cast< const calman::CallDuration *>( req )->job_id
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( calman::DtmfTone ) )
@@ -214,6 +208,11 @@ void scheduler_thread( sched::Scheduler * sched )
 
 int main()
 {
+    sched::MODULE_ID            = dummy_logger::register_module( "Scheduler" );
+    calman::Call::CLASS_ID      = dummy_logger::register_module( "Call" );
+
+    dummy_logger::set_log_level( sched::MODULE_ID,          log_levels_log4j::ERROR );
+    dummy_logger::set_log_level( calman::Call::CLASS_ID,    log_levels_log4j::TRACE );
     dummy_logger::set_log_level( log_levels_log4j::DEBUG );
 
     skype_service::SkypeService     sio;
@@ -226,8 +225,6 @@ int main()
     calman::Config              cfg;
 
     cfg.sleep_time_ms   = 3;
-
-    dummy_logger::set_log_level( sched::MODULE_ID, log_levels_log4j::ERROR );
 
     sched.load_config();
     sched.init();
