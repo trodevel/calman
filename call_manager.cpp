@@ -20,14 +20,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5459 $ $Date:: 2017-01-04 #$ $Author: serge $
+// $Revision: 5545 $ $Date:: 2017-01-10 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
-#include "../voip_io/i_voip_service.h"  // IVoipService
-#include "../voip_io/object_factory.h"  // create_message_t
+#include "../simple_voip/i_simple_voip.h"  // IVoipService
+#include "../simple_voip/object_factory.h"  // create_message_t
 #include "../utils/assert.h"            // ASSERT
 
 #include "object_factory.h"             // create_message_t

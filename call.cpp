@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5475 $ $Date:: 2017-01-04 #$ $Author: serge $
+// $Revision: 5545 $ $Date:: 2017-01-10 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -30,8 +30,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
-#include "../voip_io/i_voip_service.h"  // IVoipService
-#include "../voip_io/object_factory.h"  // create_play_file_requiest
+#include "../simple_voip/i_simple_voip.h"  // IVoipService
+#include "../simple_voip/object_factory.h"  // create_play_file_requiest
 
 NAMESPACE_CALMAN_START
 
