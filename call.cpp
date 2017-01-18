@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5545 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -30,7 +30,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
-#include "../simple_voip/i_simple_voip.h"  // IVoipService
+#include "../simple_voip/i_simple_voip.h"  // ISimpleVoip
 #include "../simple_voip/object_factory.h"  // create_play_file_requiest
 
 NAMESPACE_CALMAN_START
@@ -67,7 +67,7 @@ Call::Call(
         uint32_t                    parent_job_id,
         const std::string           & party,
         ICallManagerCallback        * callback,
-        voip_service::IVoipService  * voips ):
+        simple_voip::ISimpleVoip    * voips ):
         party_( party ),
         state_( IDLE ),
         parent_job_id_( parent_job_id ),
@@ -110,7 +110,7 @@ void Call::initiate()
 
     current_req_id_ = get_next_request_id();
 
-    voips_->consume( voip_service::create_initiate_call_request( current_req_id_, party_ ) );
+    voips_->consume( simple_voip::create_initiate_call_request( current_req_id_, party_ ) );
 
     next_state( WAITING_INITIATE_CALL_RESP );
 }
@@ -139,7 +139,7 @@ void Call::handle( const PlayFileRequest * obj )
 
     current_req_id_ = get_next_request_id();
 
-    voips_->consume( voip_service::create_play_file_request( current_req_id_, call_id_, obj->filename ) );
+    voips_->consume( simple_voip::create_play_file_request( current_req_id_, call_id_, obj->filename ) );
 
     next_state( CONNECTED_BUSY );
 }
@@ -165,19 +165,19 @@ void Call::handle( const DropRequest * obj )
 
     case WAITING_CONNECTED:
         current_req_id_ = get_next_request_id();
-        voips_->consume( voip_service::create_drop_request( current_req_id_, call_id_ ) );
+        voips_->consume( simple_voip::create_drop_request( current_req_id_, call_id_ ) );
         next_state( CANCELLED_IN_WC );
         break;
 
     case CONNECTED:
         current_req_id_ = get_next_request_id();
-        voips_->consume( voip_service::create_drop_request( current_req_id_, call_id_ ) );
+        voips_->consume( simple_voip::create_drop_request( current_req_id_, call_id_ ) );
         next_state( CANCELLED_IN_C );
         break;
 
     case CONNECTED_BUSY:
         current_req_id_ = get_next_request_id();
-        voips_->consume( voip_service::create_drop_request( current_req_id_, call_id_ ) );
+        voips_->consume( simple_voip::create_drop_request( current_req_id_, call_id_ ) );
         next_state( CANCELLED_IN_CB );
         break;
 
@@ -188,7 +188,7 @@ void Call::handle( const DropRequest * obj )
     }
 }
 
-void Call::handle( const voip_service::InitiateCallResponse * obj )
+void Call::handle( const simple_voip::InitiateCallResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -206,7 +206,7 @@ void Call::handle( const voip_service::InitiateCallResponse * obj )
     case CANCELLED_IN_WICR:
         call_id_        = obj->call_id;
         current_req_id_ = get_next_request_id();
-        voips_->consume( voip_service::create_drop_request( current_req_id_, call_id_ ) );
+        voips_->consume( simple_voip::create_drop_request( current_req_id_, call_id_ ) );
         next_state( CANCELLED_IN_WC );
         break;
 
@@ -217,7 +217,7 @@ void Call::handle( const voip_service::InitiateCallResponse * obj )
     }
 }
 
-void Call::handle( const voip_service::ErrorResponse * obj )
+void Call::handle( const simple_voip::ErrorResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -252,7 +252,7 @@ void Call::handle( const voip_service::ErrorResponse * obj )
     }
 }
 
-void Call::handle( const voip_service::RejectResponse * obj )
+void Call::handle( const simple_voip::RejectResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -281,7 +281,7 @@ void Call::handle( const voip_service::RejectResponse * obj )
     }
 }
 
-void Call::handle( const voip_service::Dial * obj )
+void Call::handle( const simple_voip::Dialing * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -297,7 +297,7 @@ void Call::handle( const voip_service::Dial * obj )
     dummy_log_debug( CLASS_ID, "dialing ..." );
 }
 
-void Call::handle( const voip_service::Ring * obj )
+void Call::handle( const simple_voip::Ringing * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -312,7 +312,7 @@ void Call::handle( const voip_service::Ring * obj )
     dummy_log_debug( CLASS_ID, "ringing ..." );
 }
 
-void Call::handle( const voip_service::Connected * obj )
+void Call::handle( const simple_voip::Connected * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -336,7 +336,7 @@ void Call::handle( const voip_service::Connected * obj )
     }
 }
 
-void Call::handle( const voip_service::Failed * obj )
+void Call::handle( const simple_voip::Failed * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -345,10 +345,10 @@ void Call::handle( const voip_service::Failed * obj )
     switch( state_ )
     {
     case WAITING_CONNECTED:
-        dummy_log_debug( CLASS_ID, "Failed: code %u, %s", obj->errorcode, obj->descr.c_str() );
+        dummy_log_debug( CLASS_ID, "Failed: %s", obj->descr.c_str() );
 
         callback_consume( create_failed( parent_job_id_,
-                decode_failure_reason( obj->type ), obj->errorcode, obj->descr ) );
+                decode_failure_reason( obj->type ), 0, obj->descr ) );
 
         next_state( DONE );
         break;
@@ -365,7 +365,7 @@ void Call::handle( const voip_service::Failed * obj )
     }
 }
 
-void Call::handle( const voip_service::ConnectionLost * obj )
+void Call::handle( const simple_voip::ConnectionLost * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -375,8 +375,8 @@ void Call::handle( const voip_service::ConnectionLost * obj )
     {
     case CONNECTED:
     case CONNECTED_BUSY:
-        dummy_log_debug( CLASS_ID, "connection lost: code %u, %s", obj->errorcode, obj->descr.c_str() );
-        callback_consume( create_connection_lost( parent_job_id_, obj->errorcode, obj->descr ) );
+        dummy_log_debug( CLASS_ID, "connection lost: %s", obj->descr.c_str() );
+        callback_consume( create_connection_lost( parent_job_id_, 0, obj->descr ) );
         next_state( DONE );
         break;
 
@@ -394,7 +394,7 @@ void Call::handle( const voip_service::ConnectionLost * obj )
     }
 }
 
-void Call::handle( const voip_service::DropResponse * obj )
+void Call::handle( const simple_voip::DropResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -423,7 +423,7 @@ void Call::handle( const voip_service::DropResponse * obj )
     }
 }
 
-void Call::handle( const voip_service::PlayFileResponse * obj )
+void Call::handle( const simple_voip::PlayFileResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -448,7 +448,7 @@ void Call::handle( const voip_service::PlayFileResponse * obj )
     }
 }
 
-void Call::handle( const voip_service::DtmfTone * obj )
+void Call::handle( const simple_voip::DtmfTone * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
@@ -495,7 +495,7 @@ void Call::send_error_response( const std::string & descr )
     callback_consume( create_error_response( parent_job_id_, descr ) );
 }
 
-void Call::validate_and_reset_response_job_id( const voip_service::ResponseObject * resp )
+void Call::validate_and_reset_response_job_id( const simple_voip::ResponseObject * resp )
 {
     ASSERT( current_req_id_ != 0 );
 
@@ -517,17 +517,17 @@ uint32_t Call::get_next_request_id()
     return ++id;
 }
 
-Failed::type_e Call::decode_failure_reason( voip_service::Failed::type_e type )
+Failed::type_e Call::decode_failure_reason( simple_voip::Failed::type_e type )
 {
-    if( type == voip_service::Failed::REFUSED )
+    if( type == simple_voip::Failed::REFUSED )
         return Failed::REFUSED;
-    else if( type == voip_service::Failed::BUSY )
+    else if( type == simple_voip::Failed::BUSY )
         return Failed::BUSY;
 
     return Failed::FAILED;
 }
 
-dtmf_tools::tone_e Call::decode_tone( voip_service::DtmfTone::tone_e tone )
+dtmf_tools::tone_e Call::decode_tone( simple_voip::DtmfTone::tone_e tone )
 {
     static const dtmf_tools::tone_e table[] =
     {
@@ -550,8 +550,8 @@ dtmf_tools::tone_e Call::decode_tone( voip_service::DtmfTone::tone_e tone )
     };
 
     if(
-            tone >= voip_service::DtmfTone::tone_e::TONE_0 &&
-            tone <= voip_service::DtmfTone::tone_e::TONE_HASH )
+            tone >= simple_voip::DtmfTone::tone_e::TONE_0 &&
+            tone <= simple_voip::DtmfTone::tone_e::TONE_HASH )
     {
         return table[ static_cast<uint16_t>( tone ) ];
     }

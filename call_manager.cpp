@@ -20,13 +20,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5545 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
-#include "../simple_voip/i_simple_voip.h"  // IVoipService
+#include "../simple_voip/i_simple_voip.h"  // ISimpleVoip
 #include "../simple_voip/object_factory.h"  // create_message_t
 #include "../utils/assert.h"            // ASSERT
 
@@ -36,6 +36,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #define MODULENAME      "CallManager"
 
 NAMESPACE_CALMAN_START
+
+// object wrapper for simple_voip::ForwardObject messages
+struct SimpleVoipWrap: public workt::IObject
+{
+    const simple_voip::CallbackObject *obj;
+};
 
 const char* to_c_str( CallManager::state_e s )
 {
@@ -67,7 +73,7 @@ CallManager::~CallManager()
     }
 }
 
-bool CallManager::init( voip_service::IVoipService * voips, const Config & cfg )
+bool CallManager::init( simple_voip::ISimpleVoip * voips, const Config & cfg )
 {
     if( voips == 0L )
         return false;
@@ -105,9 +111,13 @@ void CallManager::consume( const Object* obj )
     WorkerBase::consume( obj );
 }
 
-void CallManager::consume( const voip_service::CallbackObject* obj )
+void CallManager::consume( const simple_voip::CallbackObject* obj )
 {
-    WorkerBase::consume( obj );
+    auto w = new SimpleVoipWrap;
+
+    w->obj  = obj;
+
+    WorkerBase::consume( w );
 }
 
 void CallManager::handle( const workt::IObject* req )
@@ -126,57 +136,75 @@ void CallManager::handle( const workt::IObject* req )
     {
         handle( dynamic_cast< const PlayFileRequest *>( req ) );
     }
-    else if( typeid( *req ) == typeid( voip_service::InitiateCallResponse ) )
+    else if( typeid( *req ) == typeid( SimpleVoipWrap ) )
     {
-        handle( dynamic_cast< const voip_service::InitiateCallResponse *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::ErrorResponse ) )
-    {
-        handle( dynamic_cast< const voip_service::ErrorResponse *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::RejectResponse ) )
-    {
-        handle( dynamic_cast< const voip_service::RejectResponse *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::DropResponse ) )
-    {
-        handle( dynamic_cast< const voip_service::DropResponse *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::Dial ) )
-    {
-        handle( dynamic_cast< const voip_service::Dial *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::Ring ) )
-    {
-        handle( dynamic_cast< const voip_service::Ring *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::Connected ) )
-    {
-        handle( dynamic_cast< const voip_service::Connected *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::CallDuration ) )
-    {
-        handle( dynamic_cast< const voip_service::CallDuration *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::ConnectionLost ) )
-    {
-        handle( dynamic_cast< const voip_service::ConnectionLost *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::Failed ) )
-    {
-        handle( dynamic_cast< const voip_service::Failed *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::PlayFileResponse ) )
-    {
-        handle( dynamic_cast< const voip_service::PlayFileResponse *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::DtmfTone ) )
-    {
-        handle( dynamic_cast< const voip_service::DtmfTone *>( req ) );
+        handle( dynamic_cast< const SimpleVoipWrap *>( req ) );
     }
     else
     {
-        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %p", (void *) req );
+        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %s", typeid( *req ).name() );
+
+        ASSERT( 0 );
+    }
+
+    delete req;
+}
+
+void CallManager::handle( const SimpleVoipWrap * w )
+{
+    auto * req = w->obj;
+
+    if( typeid( *req ) == typeid( simple_voip::InitiateCallResponse ) )
+    {
+        handle( dynamic_cast< const simple_voip::InitiateCallResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::ErrorResponse ) )
+    {
+        handle( dynamic_cast< const simple_voip::ErrorResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::RejectResponse ) )
+    {
+        handle( dynamic_cast< const simple_voip::RejectResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::DropResponse ) )
+    {
+        handle( dynamic_cast< const simple_voip::DropResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::Dialing ) )
+    {
+        handle( dynamic_cast< const simple_voip::Dialing *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::Ringing ) )
+    {
+        handle( dynamic_cast< const simple_voip::Ringing *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::Connected ) )
+    {
+        handle( dynamic_cast< const simple_voip::Connected *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::CallDuration ) )
+    {
+        handle( dynamic_cast< const simple_voip::CallDuration *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::ConnectionLost ) )
+    {
+        handle( dynamic_cast< const simple_voip::ConnectionLost *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::Failed ) )
+    {
+        handle( dynamic_cast< const simple_voip::Failed *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::PlayFileResponse ) )
+    {
+        handle( dynamic_cast< const simple_voip::PlayFileResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::DtmfTone ) )
+    {
+        handle( dynamic_cast< const simple_voip::DtmfTone *>( req ) );
+    }
+    else
+    {
+        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %s", typeid( *req ).name() );
 
         ASSERT( 0 );
     }
@@ -369,54 +397,54 @@ void CallManager::forward_to_call( const _OBJ * obj )
 }
 
 // IDialerCallback interface
-void CallManager::handle( const voip_service::InitiateCallResponse * obj )
+void CallManager::handle( const simple_voip::InitiateCallResponse * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const voip_service::RejectResponse * obj )
+void CallManager::handle( const simple_voip::RejectResponse * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const voip_service::ErrorResponse * obj )
+void CallManager::handle( const simple_voip::ErrorResponse * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const voip_service::DropResponse * obj )
+void CallManager::handle( const simple_voip::DropResponse * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const voip_service::Dial * obj )
+void CallManager::handle( const simple_voip::Dialing * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const voip_service::Ring * obj )
+void CallManager::handle( const simple_voip::Ringing * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const voip_service::Connected * obj )
+void CallManager::handle( const simple_voip::Connected * obj )
 {
     forward_to_call( obj );
 }
-void CallManager::handle( const voip_service::CallDuration * obj )
+void CallManager::handle( const simple_voip::CallDuration * obj )
 {
     // ignored
 }
-void CallManager::handle( const voip_service::ConnectionLost * obj )
+void CallManager::handle( const simple_voip::ConnectionLost * obj )
 {
     forward_to_call( obj );
 }
 
-void CallManager::handle( const voip_service::Failed * obj )
+void CallManager::handle( const simple_voip::Failed * obj )
 {
     forward_to_call( obj );
 }
 
-void CallManager::handle( const voip_service::PlayFileResponse * obj )
+void CallManager::handle( const simple_voip::PlayFileResponse * obj )
 {
     forward_to_call( obj );
 }
 
-void CallManager::handle( const voip_service::DtmfTone * obj )
+void CallManager::handle( const simple_voip::DtmfTone * obj )
 {
     forward_to_call( obj );
 }

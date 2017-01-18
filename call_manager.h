@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5548 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -32,18 +32,20 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"                         // Config
 #include "i_call_manager.h"                 // ICallManager
 #include "objects.h"                        // InitiateCallRequest, ...
-#include "../simple_voip/i_simple_voip_callback.h"     // IVoipServiceCallback
+#include "../simple_voip/i_simple_voip_callback.h"     // ISimpleVoipCallback
 #include "../threcon/i_controllable.h"      // IControllable
 #include "../workt/worker_t.h"              // WorkerT
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
-namespace voip_service
+namespace simple_voip
 {
-class IVoipService;
+class ISimpleVoip;
 }
 
 NAMESPACE_CALMAN_START
+
+class SimpleVoipWrap;
 
 class ICallManagerCallback;
 
@@ -53,7 +55,7 @@ typedef workt::WorkerT< const workt::IObject*, CallManager> WorkerBase;
 
 class CallManager: public WorkerBase,
     virtual public ICallManager,
-    virtual public voip_service::IVoipServiceCallback,
+    virtual public simple_voip::ISimpleVoipCallback,
     virtual public threcon::IControllable
 {
     friend WorkerBase;
@@ -69,15 +71,15 @@ public:
     CallManager();
     ~CallManager();
 
-    bool init( voip_service::IVoipService * voips, const Config & cfg );
+    bool init( simple_voip::ISimpleVoip * voips, const Config & cfg );
 
     bool register_callback( ICallManagerCallback * callback );
 
     // ICallManager interface
     void consume( const Object* obj );
 
-    // interface IVoipServiceCallback
-    void consume( const voip_service::CallbackObject * obj );
+    // interface ISimpleVoipCallback
+    void consume( const simple_voip::CallbackObject * obj );
 
     void start();
 
@@ -94,24 +96,26 @@ private:
     // ServerT interface
     void handle( const workt::IObject* req );
 
+    void handle( const SimpleVoipWrap * req );
+
     // ICallManager interface
     void handle( const InitiateCallRequest * req );
     void handle( const DropRequest * req );
     void handle( const PlayFileRequest * req );
 
-    // interface IVoipServiceCallback
-    void handle( const voip_service::InitiateCallResponse * obj );
-    void handle( const voip_service::RejectResponse * obj );
-    void handle( const voip_service::ErrorResponse * obj );
-    void handle( const voip_service::DropResponse * obj );
-    void handle( const voip_service::Dial * obj );
-    void handle( const voip_service::Ring * obj );
-    void handle( const voip_service::Connected * obj );
-    void handle( const voip_service::CallDuration * obj );
-    void handle( const voip_service::ConnectionLost * obj );
-    void handle( const voip_service::Failed * obj );
-    void handle( const voip_service::PlayFileResponse * obj );
-    void handle( const voip_service::DtmfTone * obj );
+    // interface ISimpleVoipCallback
+    void handle( const simple_voip::InitiateCallResponse * obj );
+    void handle( const simple_voip::RejectResponse * obj );
+    void handle( const simple_voip::ErrorResponse * obj );
+    void handle( const simple_voip::DropResponse * obj );
+    void handle( const simple_voip::Dialing * obj );
+    void handle( const simple_voip::Ringing * obj );
+    void handle( const simple_voip::Connected * obj );
+    void handle( const simple_voip::CallDuration * obj );
+    void handle( const simple_voip::ConnectionLost * obj );
+    void handle( const simple_voip::Failed * obj );
+    void handle( const simple_voip::PlayFileResponse * obj );
+    void handle( const simple_voip::DtmfTone * obj );
 
     template <class _OBJ>
     void forward_to_call( const _OBJ * obj );
@@ -137,7 +141,7 @@ private:
 
     JobQueue                    job_queue_;
 
-    voip_service::IVoipService  * voips_;
+    simple_voip::ISimpleVoip  * voips_;
     ICallManagerCallback        * callback_;
 
     CallPtr                     curr_job_;

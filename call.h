@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5542 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -30,13 +30,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <memory>                   // std::shared_ptr
 #include <cstdint>                  // uint32_t
 #include "objects.h"                // DropRequest
-#include "../simple_voip/objects.h"     // voip_service::Dial
+#include "../simple_voip/objects.h"     // simple_voip::Dialing
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
 
-namespace voip_service
+namespace simple_voip
 {
-class IVoipService;
+class ISimpleVoip;
 }
 
 NAMESPACE_CALMAN_START
@@ -70,7 +70,7 @@ public:
         uint32_t                    parent_job_id,
         const std::string           & party,
         ICallManagerCallback        * callback,
-        voip_service::IVoipService  * voips );
+        simple_voip::ISimpleVoip  * voips );
 
     bool is_completed() const;
     uint32_t get_parent_job_id() const;
@@ -80,18 +80,18 @@ public:
     void handle( const PlayFileRequest * obj );
     void handle( const DropRequest * obj );
 
-    // partly interface IVoipServiceCallback
-    void handle( const voip_service::InitiateCallResponse * obj );
-    void handle( const voip_service::ErrorResponse * obj );
-    void handle( const voip_service::RejectResponse * obj );
-    void handle( const voip_service::Dial * obj );
-    void handle( const voip_service::Ring * obj );
-    void handle( const voip_service::Connected * obj );
-    void handle( const voip_service::ConnectionLost * obj );
-    void handle( const voip_service::DropResponse * obj );
-    void handle( const voip_service::Failed * obj );
-    void handle( const voip_service::PlayFileResponse * obj );
-    void handle( const voip_service::DtmfTone * obj );
+    // partly interface ISimpleVoipCallback
+    void handle( const simple_voip::InitiateCallResponse * obj );
+    void handle( const simple_voip::ErrorResponse * obj );
+    void handle( const simple_voip::RejectResponse * obj );
+    void handle( const simple_voip::Dialing * obj );
+    void handle( const simple_voip::Ringing * obj );
+    void handle( const simple_voip::Connected * obj );
+    void handle( const simple_voip::ConnectionLost * obj );
+    void handle( const simple_voip::DropResponse * obj );
+    void handle( const simple_voip::Failed * obj );
+    void handle( const simple_voip::PlayFileResponse * obj );
+    void handle( const simple_voip::DtmfTone * obj );
 
 private:
     void next_state( state_e state );
@@ -99,13 +99,13 @@ private:
 
     void send_error_response( const std::string & descr );
 
-    void validate_and_reset_response_job_id( const voip_service::ResponseObject * resp );
+    void validate_and_reset_response_job_id( const simple_voip::ResponseObject * resp );
     void callback_consume( const CallbackObject * req );
 
     static uint32_t get_next_request_id();
-    static Failed::type_e decode_failure_reason( voip_service::Failed::type_e type );
+    static Failed::type_e decode_failure_reason( simple_voip::Failed::type_e type );
 
-    static dtmf_tools::tone_e decode_tone( voip_service::DtmfTone::tone_e tone );
+    static dtmf_tools::tone_e decode_tone( simple_voip::DtmfTone::tone_e tone );
 
 private:
 
@@ -121,7 +121,7 @@ private:
     uint32_t                sleep_interval_;
 
     ICallManagerCallback        * callback_;
-    voip_service::IVoipService  * voips_;
+    simple_voip::ISimpleVoip    * voips_;
 };
 
 typedef std::shared_ptr< Call >   CallPtr;
