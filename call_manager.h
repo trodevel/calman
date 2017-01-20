@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
+// $Revision: 5587 $ $Date:: 2017-01-19 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -30,42 +30,25 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "call.h"                           // Call
 #include "config.h"                         // Config
-#include "i_call_manager.h"                 // ICallManager
-#include "objects.h"                        // InitiateCallRequest, ...
+#include "../simple_voip/i_simple_voip.h"   // simple_voip::ISimpleVoip
 #include "../simple_voip/i_simple_voip_callback.h"     // ISimpleVoipCallback
 #include "../threcon/i_controllable.h"      // IControllable
 #include "../workt/worker_t.h"              // WorkerT
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
-namespace simple_voip
-{
-class ISimpleVoip;
-}
-
 NAMESPACE_CALMAN_START
-
-class SimpleVoipWrap;
-
-class ICallManagerCallback;
 
 class CallManager;
 
-typedef workt::WorkerT< const workt::IObject*, CallManager> WorkerBase;
+typedef workt::WorkerT< const simple_voip::IObject*, CallManager> WorkerBase;
 
 class CallManager: public WorkerBase,
-    virtual public ICallManager,
+    virtual public simple_voip::ISimpleVoip,
     virtual public simple_voip::ISimpleVoipCallback,
     virtual public threcon::IControllable
 {
     friend WorkerBase;
-
-public:
-    enum state_e
-    {
-        IDLE    = 0,
-        BUSY
-    };
 
 public:
     CallManager();
@@ -73,10 +56,10 @@ public:
 
     bool init( simple_voip::ISimpleVoip * voips, const Config & cfg );
 
-    bool register_callback( ICallManagerCallback * callback );
+    bool register_callback( simple_voip::ISimpleVoipCallback * callback );
 
-    // ICallManager interface
-    void consume( const Object* obj );
+    // interface ISimpleVoip
+    void consume( const simple_voip::ForwardObject* obj );
 
     // interface ISimpleVoipCallback
     void consume( const simple_voip::CallbackObject * obj );
@@ -89,19 +72,20 @@ public:
 
 private:
 
-    typedef std::list<CallPtr>  JobQueue;
+    typedef std::list<uint32_t>                 JobQueue;
+
+    typedef std::map<uint32_t, CallPtr>         MapIdToCall;
+    typedef std::map<uint32_t, CallPtr>         MapJobIdToCall;
 
 private:
 
     // ServerT interface
     void handle( const workt::IObject* req );
 
-    void handle( const SimpleVoipWrap * req );
-
-    // ICallManager interface
-    void handle( const InitiateCallRequest * req );
-    void handle( const DropRequest * req );
-    void handle( const PlayFileRequest * req );
+    // simple_voip::ISimpleVoip interface
+    void handle( const simple_voip::InitiateCallRequest * req );
+    void handle( const simple_voip::DropRequest * req );
+    void handle( const simple_voip::PlayFileRequest * req );
 
     // interface ISimpleVoipCallback
     void handle( const simple_voip::InitiateCallResponse * obj );
@@ -118,17 +102,18 @@ private:
     void handle( const simple_voip::DtmfTone * obj );
 
     template <class _OBJ>
-    void forward_to_call( const _OBJ * obj );
+    void forward_response_to_call( const _OBJ * obj );
 
-    void check_call_end();
+    template <class OBJ>
+    void forward_event_to_call( const OBJ * obj );
+
+    void check_call_end( CallPtr call );
     void process_jobs();
-
-    void trace_state_switch() const;
 
     void send_error_response( uint32_t job_id, const std::string & descr );
     void send_reject_response( uint32_t job_id, const std::string & descr );
 
-    void callback_consume( const CallbackObject * req );
+    void callback_consume( const simple_voip::CallbackObject * req );
 
     JobQueue::iterator find( uint32_t job_id );
 
@@ -137,14 +122,15 @@ private:
 
     Config                      cfg_;
 
-    state_e                     state_;
+    uint32_t                    num_active_jobs_;
 
     JobQueue                    job_queue_;
 
     simple_voip::ISimpleVoip  * voips_;
-    ICallManagerCallback        * callback_;
+    simple_voip::ISimpleVoipCallback        * callback_;
 
-    CallPtr                     curr_job_;
+    MapIdToCall                 map_call_id_to_call_;
+    MapJobIdToCall              map_job_id_to_call_;
 };
 
 NAMESPACE_CALMAN_END

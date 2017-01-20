@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
+// $Revision: 5578 $ $Date:: 2017-01-19 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -29,7 +29,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>                    // std::mutex
 #include <memory>                   // std::shared_ptr
 #include <cstdint>                  // uint32_t
-#include "objects.h"                // DropRequest
 #include "../simple_voip/objects.h"     // simple_voip::Dialing
 
 #include "namespace_lib.h"          // NAMESPACE_CALMAN_START
@@ -37,11 +36,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 namespace simple_voip
 {
 class ISimpleVoip;
+class ISimpleVoipCallback;
 }
 
 NAMESPACE_CALMAN_START
-
-class ICallManagerCallback;
 
 class Call
 {
@@ -69,16 +67,16 @@ public:
     Call(
         uint32_t                    parent_job_id,
         const std::string           & party,
-        ICallManagerCallback        * callback,
+        simple_voip::ISimpleVoipCallback        * callback,
         simple_voip::ISimpleVoip  * voips );
 
     bool is_completed() const;
     uint32_t get_parent_job_id() const;
 
-    // partly interface ICallManagerCallback
+    // partly interface simple_voip::ISimpleVoipCallback
     void initiate();
-    void handle( const PlayFileRequest * obj );
-    void handle( const DropRequest * obj );
+    void handle( const simple_voip::PlayFileRequest * obj );
+    void handle( const simple_voip::DropRequest * obj );
 
     // partly interface ISimpleVoipCallback
     void handle( const simple_voip::InitiateCallResponse * obj );
@@ -100,10 +98,10 @@ private:
     void send_error_response( const std::string & descr );
 
     void validate_and_reset_response_job_id( const simple_voip::ResponseObject * resp );
-    void callback_consume( const CallbackObject * req );
+    void callback_consume( const simple_voip::CallbackObject * req );
 
     static uint32_t get_next_request_id();
-    static Failed::type_e decode_failure_reason( simple_voip::Failed::type_e type );
+    static simple_voip::Failed::type_e decode_failure_reason( simple_voip::Failed::type_e type );
 
     static dtmf_tools::tone_e decode_tone( simple_voip::DtmfTone::tone_e tone );
 
@@ -120,7 +118,7 @@ private:
     uint32_t                call_id_;
     uint32_t                sleep_interval_;
 
-    ICallManagerCallback        * callback_;
+    simple_voip::ISimpleVoipCallback        * callback_;
     simple_voip::ISimpleVoip    * voips_;
 };
 
