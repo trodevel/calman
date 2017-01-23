@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5591 $ $Date:: 2017-01-19 #$ $Author: serge $
+// $Revision: 5603 $ $Date:: 2017-01-23 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -160,9 +160,11 @@ void CallManager::handle( const workt::IObject* req )
         dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %s", typeid( *req ).name() );
 
         ASSERT( 0 );
+
+        delete req;
     }
 
-    delete req;
+    //delete req; // no need to delete request, because it will be forwarded
 }
 
 void CallManager::check_call_end( CallPtr call )
@@ -194,7 +196,9 @@ void CallManager::process_jobs()
             break;
         }
 
-        auto job_id = job_queue_.front();
+        auto job_pair = job_queue_.front();
+
+        auto job_id = job_pair.first;
 
         dummy_log_debug( MODULENAME, "process_jobs: taking job id %u from queue", job_id );
 
@@ -211,7 +215,7 @@ void CallManager::process_jobs()
 
         auto job = it->second;
 
-        job->initiate();
+        job->handle( job_pair.second );
 
         num_active_jobs_++;
     }
@@ -233,9 +237,9 @@ void CallManager::handle( const simple_voip::InitiateCallRequest * req )
             return;
         }
 
-        CallPtr call( new Call( req->job_id, req->party, callback_, voips_ ) );
+        CallPtr call( new Call( req->party, callback_, voips_ ) );
 
-        job_queue_.push_back( req->job_id );
+        job_queue_.push_back( std::make_pair( req->job_id, req ) );
 
         map_job_id_to_call_.insert( MapJobIdToCall::value_type( req->job_id, CallPtr ) );
 
@@ -249,29 +253,6 @@ void CallManager::handle( const simple_voip::InitiateCallRequest * req )
 
         ASSERT( 0 );
     }
-}
-
-void CallManager::handle( const simple_voip::DropRequest * req )
-{
-    forward_event_to_call( req );
-}
-
-CallManager::JobQueue::iterator CallManager::find( uint32_t job_id )
-{
-    auto it_end = job_queue_.end();
-
-    for( auto it = job_queue_.begin(); it != it_end; ++it )
-    {
-        if( (*it)->get_parent_job_id() == job_id )
-            return it;
-    }
-
-    return it_end;
-}
-
-void CallManager::handle( const simple_voip::PlayFileRequest * req )
-{
-    forward_event_to_call( req );
 }
 
 void CallManager::start()
@@ -294,6 +275,28 @@ bool CallManager::shutdown()
 
 
 template <class _OBJ>
+void CallManager::forward_request_to_call( const _OBJ * obj )
+{
+    auto it = map_call_id_to_call_.find( obj->call_id );
+
+    if( it == map_call_id_to_call_.end() )
+    {
+        dummy_log_info( MODULENAME, "cannot forward to call, call id %u not found", obj->call_id );
+        return;
+    }
+
+    auto call = it->second;
+
+    auto _b = map_job_id_to_call_.insert( MapJobIdToCall::value_type( obj->job_id, call ) ).second;
+
+    ASSERT( _b );
+
+    call->handle( obj );
+
+    check_call_end( call );
+}
+
+template <class _OBJ>
 void CallManager::forward_response_to_call( const _OBJ * obj )
 {
     auto it = map_job_id_to_call_.find( obj->job_id );
@@ -305,6 +308,8 @@ void CallManager::forward_response_to_call( const _OBJ * obj )
     }
 
     auto call = it->second;
+
+    map_job_id_to_call_.erase( it );    // erase request after getting response
 
     call->handle( obj );
 
@@ -327,6 +332,16 @@ void CallManager::forward_event_to_call( const _OBJ * obj )
     call->handle( obj );
 
     check_call_end( call );
+}
+
+void CallManager::handle( const simple_voip::DropRequest * req )
+{
+    forward_request_to_call( req );
+}
+
+void CallManager::handle( const simple_voip::PlayFileRequest * req )
+{
+    forward_request_to_call( req );
 }
 
 // IDialerCallback interface

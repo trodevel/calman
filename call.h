@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5578 $ $Date:: 2017-01-19 #$ $Author: serge $
+// $Revision: 5606 $ $Date:: 2017-01-23 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -65,16 +65,14 @@ public:
 
 public:
     Call(
-        uint32_t                    parent_job_id,
         const std::string           & party,
         simple_voip::ISimpleVoipCallback        * callback,
         simple_voip::ISimpleVoip  * voips );
 
     bool is_completed() const;
-    uint32_t get_parent_job_id() const;
 
     // partly interface simple_voip::ISimpleVoipCallback
-    void initiate();
+    void handle( const simple_voip::InitiateCallRequest * obj );
     void handle( const simple_voip::PlayFileRequest * obj );
     void handle( const simple_voip::DropRequest * obj );
 
@@ -97,11 +95,10 @@ private:
 
     void send_error_response( const std::string & descr );
 
+    void set_current_job_id( uint32_t job_id );
+    uint32_t get_current_job_id_and_invalidate();
     void validate_and_reset_response_job_id( const simple_voip::ResponseObject * resp );
     void callback_consume( const simple_voip::CallbackObject * req );
-
-    static uint32_t get_next_request_id();
-    static simple_voip::Failed::type_e decode_failure_reason( simple_voip::Failed::type_e type );
 
     static dtmf_tools::tone_e decode_tone( simple_voip::DtmfTone::tone_e tone );
 
@@ -113,7 +110,6 @@ private:
 
     state_e                 state_;
 
-    uint32_t                parent_job_id_;
     uint32_t                current_req_id_;
     uint32_t                call_id_;
     uint32_t                sleep_interval_;

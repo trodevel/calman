@@ -20,12 +20,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5587 $ $Date:: 2017-01-19 #$ $Author: serge $
+// $Revision: 5600 $ $Date:: 2017-01-23 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
 
-#include <list>
+#include <list>                             // std::list
 #include <mutex>                            // std::mutex
 
 #include "call.h"                           // Call
@@ -72,7 +72,7 @@ public:
 
 private:
 
-    typedef std::list<uint32_t>                 JobQueue;
+    typedef std::list<std::pair<uint32_t,const simple_voip::InitiateCallRequest*>>  JobQueue;
 
     typedef std::map<uint32_t, CallPtr>         MapIdToCall;
     typedef std::map<uint32_t, CallPtr>         MapJobIdToCall;
@@ -102,6 +102,9 @@ private:
     void handle( const simple_voip::DtmfTone * obj );
 
     template <class _OBJ>
+    void forward_request_to_call( const _OBJ * obj );
+
+    template <class _OBJ>
     void forward_response_to_call( const _OBJ * obj );
 
     template <class OBJ>
@@ -114,8 +117,6 @@ private:
     void send_reject_response( uint32_t job_id, const std::string & descr );
 
     void callback_consume( const simple_voip::CallbackObject * req );
-
-    JobQueue::iterator find( uint32_t job_id );
 
 private:
     mutable std::mutex          mutex_;

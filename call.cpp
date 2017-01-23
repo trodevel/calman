@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5579 $ $Date:: 2017-01-19 #$ $Author: serge $
+// $Revision: 5608 $ $Date:: 2017-01-23 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -64,20 +64,17 @@ const char* to_c_str( Call::state_e s )
 }
 
 Call::Call(
-        uint32_t                    parent_job_id,
         const std::string           & party,
         simple_voip::ISimpleVoipCallback        * callback,
         simple_voip::ISimpleVoip    * voips ):
         party_( party ),
         state_( IDLE ),
-        parent_job_id_( parent_job_id ),
         current_req_id_( 0 ),
         call_id_( 0 ),
         sleep_interval_( 1 ),
         callback_( callback ),
         voips_( voips )
 {
-    ASSERT( parent_job_id );
 }
 
 bool Call::is_completed() const
@@ -87,16 +84,9 @@ bool Call::is_completed() const
     return state_ == DONE;
 }
 
-uint32_t Call::get_parent_job_id() const
+void Call::handle( const simple_voip::InitiateCallRequest * obj )
 {
-    MUTEX_SCOPE_LOCK( mutex_ );
-
-    return parent_job_id_;
-}
-
-void Call::initiate()
-{
-    dummy_log_trace( CLASS_ID, "handle(): %s", "initiate" );
+    dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -106,11 +96,9 @@ void Call::initiate()
         ASSERT( 0 );
     }
 
-    ASSERT( current_req_id_ == 0 );
+    set_current_job_id( obj->job_id );
 
-    current_req_id_ = get_next_request_id();
-
-    voips_->consume( simple_voip::create_initiate_call_request( current_req_id_, party_ ) );
+    voips_->consume( obj );
 
     next_state( WAITING_INITIATE_CALL_RESP );
 }
@@ -130,16 +118,16 @@ void Call::handle( const simple_voip::PlayFileRequest * obj )
 
     if( state_ == CONNECTED_BUSY )
     {
-        callback_consume( create_reject_response( parent_job_id_,
+        callback_consume( simple_voip::create_reject_response( obj->job_id, 0,
                 "cannot process request, busy with processing request " + std::to_string( current_req_id_ ) ) );
+
+        delete obj;
         return;
     }
 
-    ASSERT( current_req_id_ == 0 );
+    set_current_job_id( obj->job_id );
 
-    current_req_id_ = get_next_request_id();
-
-    voips_->consume( simple_voip::create_play_file_request( current_req_id_, call_id_, obj->filename ) );
+    voips_->consume( obj );
 
     next_state( CONNECTED_BUSY );
 }
@@ -155,29 +143,32 @@ void Call::handle( const simple_voip::DropRequest * obj )
     case IDLE:
     case WAITING_DIALER_FREE:
 
-        callback_consume( create_message_t<simple_voip::DropResponse>( parent_job_id_ ) );
+        callback_consume( simple_voip::create_drop_response( obj->job_id ) );
+        delete obj;
         next_state( DONE );
         break;
 
     case WAITING_INITIATE_CALL_RESP:
+        set_current_job_id( obj->job_id );
+        delete obj;
         next_state( CANCELLED_IN_WICR );
         break;
 
     case WAITING_CONNECTED:
-        current_req_id_ = get_next_request_id();
-        voips_->consume( simple_voip::create_drop_request( current_req_id_, call_id_ ) );
+        set_current_job_id( obj->job_id );
+        voips_->consume( obj );
         next_state( CANCELLED_IN_WC );
         break;
 
     case CONNECTED:
-        current_req_id_ = get_next_request_id();
-        voips_->consume( simple_voip::create_drop_request( current_req_id_, call_id_ ) );
+        set_current_job_id( obj->job_id );
+        voips_->consume( obj );
         next_state( CANCELLED_IN_C );
         break;
 
     case CONNECTED_BUSY:
-        current_req_id_ = get_next_request_id();
-        voips_->consume( simple_voip::create_drop_request( current_req_id_, call_id_ ) );
+        set_current_job_id( obj->job_id );
+        voips_->consume( obj );
         next_state( CANCELLED_IN_CB );
         break;
 
@@ -198,15 +189,14 @@ void Call::handle( const simple_voip::InitiateCallResponse * obj )
     {
     case WAITING_INITIATE_CALL_RESP:
         validate_and_reset_response_job_id( obj );
-        callback_consume( create_message_t<simple_voip::InitiateCallResponse>( parent_job_id_ ) );
+        callback_consume( obj );
         call_id_    = obj->call_id;
         next_state( WAITING_CONNECTED );
         break;
 
     case CANCELLED_IN_WICR:
         call_id_        = obj->call_id;
-        current_req_id_ = get_next_request_id();
-        voips_->consume( simple_voip::create_drop_request( current_req_id_, call_id_ ) );
+        voips_->consume( simple_voip::create_drop_request( get_current_job_id_and_invalidate(), call_id_ ) );
         next_state( CANCELLED_IN_WC );
         break;
 
@@ -226,22 +216,23 @@ void Call::handle( const simple_voip::ErrorResponse * obj )
     switch( state_ )
     {
     case WAITING_INITIATE_CALL_RESP:
-        send_error_response( "failed to initiate call: " + obj->descr );
+        callback_consume( obj );
         next_state( DONE );
         break;
 
     case CANCELLED_IN_WICR:
-        callback_consume( create_message_t<simple_voip::DropResponse>( parent_job_id_ ) );
+        callback_consume( obj );
         next_state( DONE );
         break;
 
     case CANCELLED_IN_CB:
+        delete obj;
         next_state( CANCELLED_IN_C );
         break;
 
     case CONNECTED_BUSY:
         validate_and_reset_response_job_id( obj );
-        send_error_response( "failed to to process request: " + obj->descr );
+        callback_consume( obj );
         next_state( CONNECTED );
         break;
 
@@ -262,15 +253,12 @@ void Call::handle( const simple_voip::RejectResponse * obj )
     {
     case WAITING_INITIATE_CALL_RESP:
         validate_and_reset_response_job_id( obj );
-        sleep_interval_ *= 2;
-        dummy_log_info( CLASS_ID, "handle: RejectResponse: dialer is busy, sleeping %u sec ...", sleep_interval_ );
-//        THIS_THREAD_SLEEP_SEC( sleep_interval_ );
-//        dummy_log_info( CLASS_ID, "handle: RejectResponse: active again, retrying ..." );
-        next_state( WAITING_DIALER_FREE );
+        callback_consume( obj );
+        next_state( DONE );
         break;
 
     case CANCELLED_IN_WICR:
-        callback_consume( create_message_t<simple_voip::DropResponse>( parent_job_id_ ) );
+        callback_consume( obj );
         next_state( DONE );
         break;
 
@@ -291,10 +279,13 @@ void Call::handle( const simple_voip::Dialing * obj )
     {
         dummy_log_fatal( CLASS_ID, "%s is unexpected in state %s", typeid( *obj ).name(), to_c_str( state_ ) );
         ASSERT( 0 );
+        delete obj;
         return;
     }
 
     dummy_log_debug( CLASS_ID, "dialing ..." );
+
+    delete obj;
 }
 
 void Call::handle( const simple_voip::Ringing * obj )
@@ -307,9 +298,13 @@ void Call::handle( const simple_voip::Ringing * obj )
     {
         dummy_log_fatal( CLASS_ID, "%s is unexpected in state %s", typeid( *obj ).name(), to_c_str( state_ ) );
         ASSERT( 0 );
+        delete obj;
+        return;
     }
 
     dummy_log_debug( CLASS_ID, "ringing ..." );
+
+    delete obj;
 }
 
 void Call::handle( const simple_voip::Connected * obj )
@@ -321,11 +316,12 @@ void Call::handle( const simple_voip::Connected * obj )
     switch( state_ )
     {
     case WAITING_CONNECTED:
-        callback_consume( create_message_t<simple_voip::Connected>( parent_job_id_ ) );
+        callback_consume( obj );
         next_state( CONNECTED );
         break;
 
     case CANCELLED_IN_WC:
+        delete obj;
         next_state( WRONG_CONNECTED );
         break;
 
@@ -347,14 +343,14 @@ void Call::handle( const simple_voip::Failed * obj )
     case WAITING_CONNECTED:
         dummy_log_debug( CLASS_ID, "Failed: %s", obj->descr.c_str() );
 
-        callback_consume( create_failed( parent_job_id_,
-                decode_failure_reason( obj->type ), 0, obj->descr ) );
+        callback_consume( obj );
 
         next_state( DONE );
         break;
 
     case CANCELLED_IN_WC:
-        callback_consume( create_message_t<simple_voip::DropResponse>( parent_job_id_ ) );
+        delete obj;
+        callback_consume( simple_voip::create_drop_response( get_current_job_id_and_invalidate() ) );
         next_state( DONE );
         break;
 
@@ -376,14 +372,15 @@ void Call::handle( const simple_voip::ConnectionLost * obj )
     case CONNECTED:
     case CONNECTED_BUSY:
         dummy_log_debug( CLASS_ID, "connection lost: %s", obj->descr.c_str() );
-        callback_consume( create_connection_lost( parent_job_id_, 0, obj->descr ) );
+        callback_consume( obj );
         next_state( DONE );
         break;
 
     case CANCELLED_IN_C:
     case CANCELLED_IN_CB:
     case WRONG_CONNECTED:
-        callback_consume( create_message_t<simple_voip::DropResponse>( parent_job_id_ ) );
+        delete obj;
+        callback_consume( simple_voip::create_drop_response( get_current_job_id_and_invalidate() ) );
         next_state( DONE );
         break;
 
@@ -403,7 +400,7 @@ void Call::handle( const simple_voip::DropResponse * obj )
     switch( state_ )
     {
     case CANCELLED_IN_WICR:
-        callback_consume( create_message_t<simple_voip::DropResponse>( parent_job_id_ ) );
+        callback_consume( obj );
         next_state( DONE );
         break;
 
@@ -412,7 +409,7 @@ void Call::handle( const simple_voip::DropResponse * obj )
     case CANCELLED_IN_C:
     case CANCELLED_IN_CB:
         validate_and_reset_response_job_id( obj );
-        callback_consume( create_message_t<simple_voip::DropResponse>( parent_job_id_ ) );
+        callback_consume( obj );
         next_state( DONE );
         break;
 
@@ -433,11 +430,12 @@ void Call::handle( const simple_voip::PlayFileResponse * obj )
     {
     case CONNECTED_BUSY:
         validate_and_reset_response_job_id( obj );
-        callback_consume( create_message_t<simple_voip::PlayFileResponse>( parent_job_id_ ) );
+        callback_consume( obj );
         next_state( CONNECTED );
         break;
 
     case CANCELLED_IN_CB:
+        delete obj;
         next_state( CANCELLED_IN_C );
         break;
 
@@ -460,14 +458,14 @@ void Call::handle( const simple_voip::DtmfTone * obj )
     case CONNECTED_BUSY:
     {
         dummy_log_debug( CLASS_ID, "handle DtmfTone: %u", obj->tone );
-        auto tone = decode_tone( obj->tone );
-        callback_consume( create_dtmf_tone( parent_job_id_, tone ) );
+        callback_consume( obj );
     }
         break;
 
     case CANCELLED_IN_C:
     case CANCELLED_IN_CB:
     case WRONG_CONNECTED:
+        delete obj;
         dummy_log_warn( CLASS_ID, "DTMF tone is ignored", to_c_str( state_ ) );
         break;
 
@@ -495,6 +493,24 @@ void Call::send_error_response( const std::string & descr )
     callback_consume( create_error_response( parent_job_id_, descr ) );
 }
 
+void Call::set_current_job_id( uint32_t job_id )
+{
+    ASSERT( current_req_id_ == 0 );
+
+    current_req_id_ = job_id;
+}
+
+uint32_t Call::get_current_job_id_and_invalidate()
+{
+    ASSERT( current_req_id_ != 0 );
+
+    auto res = current_req_id_;
+
+    current_req_id_ = 0;
+
+    return res;
+}
+
 void Call::validate_and_reset_response_job_id( const simple_voip::ResponseObject * resp )
 {
     ASSERT( current_req_id_ != 0 );
@@ -508,23 +524,6 @@ void Call::callback_consume( const simple_voip::CallbackObject * req )
 {
     if( callback_ )
         callback_->consume( req );
-}
-
-uint32_t Call::get_next_request_id()
-{
-    static uint32_t id = 0;
-
-    return ++id;
-}
-
-Failed::type_e Call::decode_failure_reason( simple_voip::Failed::type_e type )
-{
-    if( type == simple_voip::Failed::REFUSED )
-        return Failed::REFUSED;
-    else if( type == simple_voip::Failed::BUSY )
-        return Failed::BUSY;
-
-    return Failed::FAILED;
 }
 
 dtmf_tools::tone_e Call::decode_tone( simple_voip::DtmfTone::tone_e tone )
