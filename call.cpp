@@ -20,18 +20,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5608 $ $Date:: 2017-01-23 #$ $Author: serge $
+// $Revision: 5615 $ $Date:: 2017-01-24 #$ $Author: serge $
 
 #include "call.h"                       // self
 
-#include "object_factory.h"             // create_message_t
-
-#include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
 #include "../simple_voip/i_simple_voip.h"  // ISimpleVoip
 #include "../simple_voip/i_simple_voip_callback.h"  // ISimpleVoipCallback
-#include "../simple_voip/object_factory.h"  // create_play_file_requiest
+#include "../simple_voip/object_factory.h"  // simple_voip::create_play_file_requiest
 
 NAMESPACE_CALMAN_START
 
@@ -79,16 +76,12 @@ Call::Call(
 
 bool Call::is_completed() const
 {
-    MUTEX_SCOPE_LOCK( mutex_ );
-
     return state_ == DONE;
 }
 
 void Call::handle( const simple_voip::InitiateCallRequest * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != IDLE )
     {
@@ -106,8 +99,6 @@ void Call::handle( const simple_voip::InitiateCallRequest * obj )
 void Call::handle( const simple_voip::PlayFileRequest * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != CONNECTED && state_ != CONNECTED_BUSY )
     {
@@ -135,8 +126,6 @@ void Call::handle( const simple_voip::PlayFileRequest * obj )
 void Call::handle( const simple_voip::DropRequest * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
 
     switch( state_ )
     {
@@ -183,8 +172,6 @@ void Call::handle( const simple_voip::InitiateCallResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
-    MUTEX_SCOPE_LOCK( mutex_ );
-
     switch( state_ )
     {
     case WAITING_INITIATE_CALL_RESP:
@@ -210,8 +197,6 @@ void Call::handle( const simple_voip::InitiateCallResponse * obj )
 void Call::handle( const simple_voip::ErrorResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
 
     switch( state_ )
     {
@@ -247,8 +232,6 @@ void Call::handle( const simple_voip::RejectResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
-    MUTEX_SCOPE_LOCK( mutex_ );
-
     switch( state_ )
     {
     case WAITING_INITIATE_CALL_RESP:
@@ -273,8 +256,6 @@ void Call::handle( const simple_voip::Dialing * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
-    MUTEX_SCOPE_LOCK( mutex_ );
-
     if( state_ != WAITING_CONNECTED && state_ != CANCELLED_IN_WC )
     {
         dummy_log_fatal( CLASS_ID, "%s is unexpected in state %s", typeid( *obj ).name(), to_c_str( state_ ) );
@@ -292,8 +273,6 @@ void Call::handle( const simple_voip::Ringing * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
-    MUTEX_SCOPE_LOCK( mutex_ );
-
     if( state_ != WAITING_CONNECTED  && state_ != CANCELLED_IN_WC )
     {
         dummy_log_fatal( CLASS_ID, "%s is unexpected in state %s", typeid( *obj ).name(), to_c_str( state_ ) );
@@ -310,8 +289,6 @@ void Call::handle( const simple_voip::Ringing * obj )
 void Call::handle( const simple_voip::Connected * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
 
     switch( state_ )
     {
@@ -335,8 +312,6 @@ void Call::handle( const simple_voip::Connected * obj )
 void Call::handle( const simple_voip::Failed * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
 
     switch( state_ )
     {
@@ -364,8 +339,6 @@ void Call::handle( const simple_voip::Failed * obj )
 void Call::handle( const simple_voip::ConnectionLost * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
 
     switch( state_ )
     {
@@ -395,8 +368,6 @@ void Call::handle( const simple_voip::DropResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
-    MUTEX_SCOPE_LOCK( mutex_ );
-
     switch( state_ )
     {
     case CANCELLED_IN_WICR:
@@ -424,8 +395,6 @@ void Call::handle( const simple_voip::PlayFileResponse * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
 
-    MUTEX_SCOPE_LOCK( mutex_ );
-
     switch( state_ )
     {
     case CONNECTED_BUSY:
@@ -449,8 +418,6 @@ void Call::handle( const simple_voip::PlayFileResponse * obj )
 void Call::handle( const simple_voip::DtmfTone * obj )
 {
     dummy_log_trace( CLASS_ID, "handle(): %s", typeid( *obj ).name() );
-
-    MUTEX_SCOPE_LOCK( mutex_ );
 
     switch( state_ )
     {
@@ -488,11 +455,6 @@ void Call::trace_state_switch() const
     dummy_log_debug( CLASS_ID, "switched to %s", to_c_str( state_ ) );
 }
 
-void Call::send_error_response( const std::string & descr )
-{
-    callback_consume( create_error_response( parent_job_id_, descr ) );
-}
-
 void Call::set_current_job_id( uint32_t job_id )
 {
     ASSERT( current_req_id_ == 0 );
@@ -524,38 +486,6 @@ void Call::callback_consume( const simple_voip::CallbackObject * req )
 {
     if( callback_ )
         callback_->consume( req );
-}
-
-dtmf_tools::tone_e Call::decode_tone( simple_voip::DtmfTone::tone_e tone )
-{
-    static const dtmf_tools::tone_e table[] =
-    {
-        dtmf_tools::tone_e::TONE_0,
-        dtmf_tools::tone_e::TONE_1,
-        dtmf_tools::tone_e::TONE_2,
-        dtmf_tools::tone_e::TONE_3,
-        dtmf_tools::tone_e::TONE_4,
-        dtmf_tools::tone_e::TONE_5,
-        dtmf_tools::tone_e::TONE_6,
-        dtmf_tools::tone_e::TONE_7,
-        dtmf_tools::tone_e::TONE_8,
-        dtmf_tools::tone_e::TONE_9,
-        dtmf_tools::tone_e::TONE_A,
-        dtmf_tools::tone_e::TONE_B,
-        dtmf_tools::tone_e::TONE_C,
-        dtmf_tools::tone_e::TONE_D,
-        dtmf_tools::tone_e::TONE_STAR,
-        dtmf_tools::tone_e::TONE_HASH
-    };
-
-    if(
-            tone >= simple_voip::DtmfTone::tone_e::TONE_0 &&
-            tone <= simple_voip::DtmfTone::tone_e::TONE_HASH )
-    {
-        return table[ static_cast<uint16_t>( tone ) ];
-    }
-
-    return dtmf_tools::tone_e::TONE_A;
 }
 
 NAMESPACE_CALMAN_END

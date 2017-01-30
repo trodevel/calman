@@ -20,13 +20,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5606 $ $Date:: 2017-01-23 #$ $Author: serge $
+// $Revision: 5615 $ $Date:: 2017-01-24 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
 
 #include <string>                   // std::string
-#include <mutex>                    // std::mutex
 #include <memory>                   // std::shared_ptr
 #include <cstdint>                  // uint32_t
 #include "../simple_voip/objects.h"     // simple_voip::Dialing
@@ -93,18 +92,12 @@ private:
     void next_state( state_e state );
     void trace_state_switch() const;
 
-    void send_error_response( const std::string & descr );
-
     void set_current_job_id( uint32_t job_id );
     uint32_t get_current_job_id_and_invalidate();
     void validate_and_reset_response_job_id( const simple_voip::ResponseObject * resp );
     void callback_consume( const simple_voip::CallbackObject * req );
 
-    static dtmf_tools::tone_e decode_tone( simple_voip::DtmfTone::tone_e tone );
-
 private:
-
-    mutable std::mutex      mutex_;
 
     std::string             party_;
 

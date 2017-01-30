@@ -20,13 +20,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5600 $ $Date:: 2017-01-23 #$ $Author: serge $
+// $Revision: 5621 $ $Date:: 2017-01-24 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
 
 #include <list>                             // std::list
 #include <mutex>                            // std::mutex
+#include <map>                              // std::map
 
 #include "call.h"                           // Call
 #include "config.h"                         // Config
@@ -69,6 +70,8 @@ public:
     // interface threcon::IControllable
     bool shutdown();
 
+    // TODO make map function: call_id -> call
+
 
 private:
 
@@ -80,7 +83,7 @@ private:
 private:
 
     // ServerT interface
-    void handle( const workt::IObject* req );
+    void handle( const simple_voip::IObject* req );
 
     // simple_voip::ISimpleVoip interface
     void handle( const simple_voip::InitiateCallRequest * req );
@@ -110,11 +113,10 @@ private:
     template <class OBJ>
     void forward_event_to_call( const OBJ * obj );
 
-    void check_call_end( CallPtr call );
+    void check_call_end( CallPtr call, uint32_t call_id, uint32_t job_id );
     void process_jobs();
 
     void send_error_response( uint32_t job_id, const std::string & descr );
-    void send_reject_response( uint32_t job_id, const std::string & descr );
 
     void callback_consume( const simple_voip::CallbackObject * req );
 

@@ -20,17 +20,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5603 $ $Date:: 2017-01-23 #$ $Author: serge $
+// $Revision: 5619 $ $Date:: 2017-01-24 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../simple_voip/i_simple_voip.h"  // ISimpleVoip
-#include "../simple_voip/object_factory.h"  // create_message_t
+#include "../simple_voip/object_factory.h"  // simple_voip::create_message_t
 #include "../utils/assert.h"            // ASSERT
-
-#include "object_factory.h"             // create_message_t
 
 #define MODULENAME      "CallManager"
 
@@ -91,7 +89,7 @@ void CallManager::consume( const simple_voip::CallbackObject* obj )
     WorkerBase::consume( obj );
 }
 
-void CallManager::handle( const workt::IObject* req )
+void CallManager::handle( const simple_voip::IObject* req )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -167,7 +165,7 @@ void CallManager::handle( const workt::IObject* req )
     //delete req; // no need to delete request, because it will be forwarded
 }
 
-void CallManager::check_call_end( CallPtr call )
+void CallManager::check_call_end( CallPtr call, uint32_t call_id, uint32_t job_id )
 {
     if( call->is_completed() )
     {
@@ -175,7 +173,21 @@ void CallManager::check_call_end( CallPtr call )
 
         num_active_jobs_--;
 
-        dummy_log_debug( MODULENAME, "removing call id - %u", call->get_parent_job_id() );
+        dummy_log_debug( MODULENAME, "removing call_id %u, job_id %u", call_id, job_id );
+
+        if( call_id )
+        {
+            auto n = map_call_id_to_call_.erase( call_id );
+
+            dummy_log_debug( MODULENAME, "check_call_end: call_id %u - %s", ( n > 0 ) ? "DELETED" : "not found" );
+        }
+
+        if( job_id )
+        {
+            auto n = map_job_id_to_call_.erase( job_id );
+
+            dummy_log_debug( MODULENAME, "check_call_end: job_id %u - %s", ( n > 0 ) ? "DELETED" : "not found" );
+        }
 
         process_jobs();
     }
@@ -241,7 +253,7 @@ void CallManager::handle( const simple_voip::InitiateCallRequest * req )
 
         job_queue_.push_back( std::make_pair( req->job_id, req ) );
 
-        map_job_id_to_call_.insert( MapJobIdToCall::value_type( req->job_id, CallPtr ) );
+        map_job_id_to_call_.insert( MapJobIdToCall::value_type( req->job_id, call ) );
 
         dummy_log_debug( MODULENAME, "insert_job: inserted job %u", req->job_id );
 
@@ -293,7 +305,7 @@ void CallManager::forward_request_to_call( const _OBJ * obj )
 
     call->handle( obj );
 
-    check_call_end( call );
+    check_call_end( call, obj->call_id, 0 );
 }
 
 template <class _OBJ>
@@ -303,7 +315,7 @@ void CallManager::forward_response_to_call( const _OBJ * obj )
 
     if( it == map_job_id_to_call_.end() )
     {
-        dummy_log_info( MODULENAME, "cannot forward to call, job id %u not found", obj->call_id );
+        dummy_log_info( MODULENAME, "cannot forward to call, job id %u not found", obj->job_id );
         return;
     }
 
@@ -313,7 +325,7 @@ void CallManager::forward_response_to_call( const _OBJ * obj )
 
     call->handle( obj );
 
-    check_call_end( call );
+    check_call_end( call, 0, obj->job_id );
 }
 
 template <class _OBJ>
@@ -331,7 +343,7 @@ void CallManager::forward_event_to_call( const _OBJ * obj )
 
     call->handle( obj );
 
-    check_call_end( call );
+    check_call_end( call, obj->call_id, 0 );
 }
 
 void CallManager::handle( const simple_voip::DropRequest * req )
@@ -399,12 +411,7 @@ void CallManager::handle( const simple_voip::DtmfTone * obj )
 
 void CallManager::send_error_response( uint32_t job_id, const std::string & descr )
 {
-    callback_consume( simple_voip::create_error_response( job_id, descr ) );
-}
-
-void CallManager::send_reject_response( uint32_t job_id, const std::string & descr )
-{
-    callback_consume( simple_voip::create_reject_response( job_id, descr ) );
+    callback_consume( simple_voip::create_error_response( job_id, 0, descr ) );
 }
 
 void CallManager::callback_consume( const simple_voip::CallbackObject * req )
