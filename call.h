@@ -20,13 +20,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5615 $ $Date:: 2017-01-24 #$ $Author: serge $
+// $Revision: 5626 $ $Date:: 2017-01-30 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
 
 #include <string>                   // std::string
-#include <memory>                   // std::shared_ptr
 #include <cstdint>                  // uint32_t
 #include "../simple_voip/objects.h"     // simple_voip::Dialing
 
@@ -39,6 +38,8 @@ class ISimpleVoipCallback;
 }
 
 NAMESPACE_CALMAN_START
+
+class CallManager;
 
 class Call
 {
@@ -66,7 +67,8 @@ public:
     Call(
         const std::string           & party,
         simple_voip::ISimpleVoipCallback        * callback,
-        simple_voip::ISimpleVoip  * voips );
+        simple_voip::ISimpleVoip    * voips,
+        CallManager                 * calman );
 
     bool is_completed() const;
 
@@ -109,9 +111,8 @@ private:
 
     simple_voip::ISimpleVoipCallback        * callback_;
     simple_voip::ISimpleVoip    * voips_;
+    CallManager                 * calman_;
 };
-
-typedef std::shared_ptr< Call >   CallPtr;
 
 NAMESPACE_CALMAN_END
 

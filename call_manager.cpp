@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5619 $ $Date:: 2017-01-24 #$ $Author: serge $
+// $Revision: 5628 $ $Date:: 2017-01-30 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -42,6 +42,11 @@ CallManager::CallManager():
 CallManager::~CallManager()
 {
     MUTEX_SCOPE_LOCK( mutex_ );
+
+//    for( auto c : map_call_id_to_call_ )
+//    {
+//        delete c.second;
+//    }
 
     job_queue_.clear();
 }
@@ -165,7 +170,7 @@ void CallManager::handle( const simple_voip::IObject* req )
     //delete req; // no need to delete request, because it will be forwarded
 }
 
-void CallManager::check_call_end( CallPtr call, uint32_t call_id, uint32_t job_id )
+void CallManager::check_call_end( Call* call, uint32_t call_id, uint32_t job_id )
 {
     if( call->is_completed() )
     {
@@ -188,6 +193,8 @@ void CallManager::check_call_end( CallPtr call, uint32_t call_id, uint32_t job_i
 
             dummy_log_debug( MODULENAME, "check_call_end: job_id %u - %s", ( n > 0 ) ? "DELETED" : "not found" );
         }
+
+        delete call;
 
         process_jobs();
     }
@@ -249,7 +256,7 @@ void CallManager::handle( const simple_voip::InitiateCallRequest * req )
             return;
         }
 
-        CallPtr call( new Call( req->party, callback_, voips_ ) );
+        auto call = new Call( req->party, callback_, voips_, this );
 
         job_queue_.push_back( std::make_pair( req->job_id, req ) );
 
@@ -283,6 +290,24 @@ bool CallManager::shutdown()
     WorkerBase::shutdown();
 
     return true;
+}
+
+void CallManager::map_call_id_to_call( uint32_t call_id, Call * call )
+{
+    // called from the locked area, no mutex lock is necessary
+
+    auto b = map_call_id_to_call_.insert( MapIdToCall::value_type( call_id, call ) ).second;
+
+    if( b == false )
+    {
+        dummy_log_error( MODULENAME, "cannot insert call id %u - already exists", call_id );
+
+        ASSERT( 0 );
+
+        return;
+    }
+
+    dummy_log_debug( MODULENAME, "mapped call id %u", call_id );
 }
 
 

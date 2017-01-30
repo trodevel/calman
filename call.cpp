@@ -20,15 +20,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5615 $ $Date:: 2017-01-24 #$ $Author: serge $
+// $Revision: 5626 $ $Date:: 2017-01-30 #$ $Author: serge $
 
 #include "call.h"                       // self
+
+#include <typeinfo>                     // typeid
 
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
 #include "../simple_voip/i_simple_voip.h"  // ISimpleVoip
 #include "../simple_voip/i_simple_voip_callback.h"  // ISimpleVoipCallback
 #include "../simple_voip/object_factory.h"  // simple_voip::create_play_file_requiest
+
+#include "call_manager.h"               // map_call_id_to_call()
 
 NAMESPACE_CALMAN_START
 
@@ -63,14 +67,16 @@ const char* to_c_str( Call::state_e s )
 Call::Call(
         const std::string           & party,
         simple_voip::ISimpleVoipCallback        * callback,
-        simple_voip::ISimpleVoip    * voips ):
+        simple_voip::ISimpleVoip    * voips,
+        CallManager                 * calman ):
         party_( party ),
         state_( IDLE ),
         current_req_id_( 0 ),
         call_id_( 0 ),
         sleep_interval_( 1 ),
         callback_( callback ),
-        voips_( voips )
+        voips_( voips ),
+        calman_( calman )
 {
 }
 
@@ -178,6 +184,9 @@ void Call::handle( const simple_voip::InitiateCallResponse * obj )
         validate_and_reset_response_job_id( obj );
         callback_consume( obj );
         call_id_    = obj->call_id;
+
+        calman_->map_call_id_to_call( call_id_, this );
+
         next_state( WAITING_CONNECTED );
         break;
 

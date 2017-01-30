@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5621 $ $Date:: 2017-01-24 #$ $Author: serge $
+// $Revision: 5624 $ $Date:: 2017-01-30 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -70,15 +70,14 @@ public:
     // interface threcon::IControllable
     bool shutdown();
 
-    // TODO make map function: call_id -> call
-
+    void map_call_id_to_call( uint32_t call_id, Call * call );
 
 private:
 
     typedef std::list<std::pair<uint32_t,const simple_voip::InitiateCallRequest*>>  JobQueue;
 
-    typedef std::map<uint32_t, CallPtr>         MapIdToCall;
-    typedef std::map<uint32_t, CallPtr>         MapJobIdToCall;
+    typedef std::map<uint32_t, Call*>         MapIdToCall;
+    typedef std::map<uint32_t, Call*>         MapJobIdToCall;
 
 private:
 
@@ -113,7 +112,7 @@ private:
     template <class OBJ>
     void forward_event_to_call( const OBJ * obj );
 
-    void check_call_end( CallPtr call, uint32_t call_id, uint32_t job_id );
+    void check_call_end( Call* call, uint32_t call_id, uint32_t job_id );
     void process_jobs();
 
     void send_error_response( uint32_t job_id, const std::string & descr );
