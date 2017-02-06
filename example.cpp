@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5614 $ $Date:: 2017-01-24 #$ $Author: serge $
+// $Revision: 5691 $ $Date:: 2017-02-06 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -58,27 +58,27 @@ public:
         if( typeid( *req ) == typeid( simple_voip::InitiateCallResponse ) )
         {
             std::cout << "got InitiateCallResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::InitiateCallResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::InitiateCallResponse *>( req )->req_id
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( simple_voip::ErrorResponse ) )
         {
             std::cout << "got ErrorResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::ErrorResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::ErrorResponse *>( req )->req_id
                     << "  " << dynamic_cast< const simple_voip::ErrorResponse *>( req )->descr
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( simple_voip::RejectResponse ) )
         {
             std::cout << "got RejectResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::RejectResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::RejectResponse *>( req )->req_id
                     << " " << dynamic_cast< const simple_voip::RejectResponse *>( req )->descr
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( simple_voip::DropResponse ) )
         {
             std::cout << "got DropResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::DropResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::DropResponse *>( req )->req_id
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( simple_voip::Failed ) )
@@ -112,7 +112,7 @@ public:
         else if( typeid( *req ) == typeid( simple_voip::PlayFileResponse ) )
         {
             std::cout << "got PlayFileResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::PlayFileResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::PlayFileResponse *>( req )->req_id
                     << std::endl;
         }
         else
@@ -126,9 +126,9 @@ public:
     void control_thread()
     {
         std::cout << "type exit or quit to quit: " << std::endl;
-        std::cout << "call <job_id> <party>" << std::endl;
-        std::cout << "drop <job_id> <call_id>" << std::endl;
-        std::cout << "play <job_id> <call_id> <file>" << std::endl;
+        std::cout << "call <req_id> <party>" << std::endl;
+        std::cout << "drop <req_id> <call_id>" << std::endl;
+        std::cout << "play <req_id> <call_id> <file>" << std::endl;
 
         std::string input;
 
@@ -165,28 +165,28 @@ private:
             }
             else if( cmd == "call" )
             {
-                uint32_t job_id;
+                uint32_t req_id;
                 std::string s;
-                stream >> job_id >> s;
+                stream >> req_id >> s;
 
-                calman_->consume( simple_voip::create_initiate_call_request( job_id, s ) );
+                calman_->consume( simple_voip::create_initiate_call_request( req_id, s ) );
             }
             else if( cmd == "drop" )
             {
-                uint32_t job_id;
+                uint32_t req_id;
                 uint32_t call_id;
-                stream >> job_id >> call_id;
+                stream >> req_id >> call_id;
 
-                calman_->consume( simple_voip::create_drop_request( job_id, call_id ) );
+                calman_->consume( simple_voip::create_drop_request( req_id, call_id ) );
             }
             else if( cmd == "play" )
             {
-                uint32_t job_id;
+                uint32_t req_id;
                 uint32_t call_id;
                 std::string filename;
-                stream >> job_id >> call_id >> filename;
+                stream >> req_id >> call_id >> filename;
 
-                calman_->consume( simple_voip::create_play_file_request( job_id, call_id, filename ) );
+                calman_->consume( simple_voip::create_play_file_request( req_id, call_id, filename ) );
             }
             else
                 std::cout << "ERROR: unknown command '" << cmd << "'" << std::endl;

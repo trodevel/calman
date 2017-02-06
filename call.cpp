@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5626 $ $Date:: 2017-01-30 #$ $Author: serge $
+// $Revision: 5691 $ $Date:: 2017-02-06 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -95,7 +95,7 @@ void Call::handle( const simple_voip::InitiateCallRequest * obj )
         ASSERT( 0 );
     }
 
-    set_current_job_id( obj->job_id );
+    set_current_job_id( obj->req_id );
 
     voips_->consume( obj );
 
@@ -115,14 +115,14 @@ void Call::handle( const simple_voip::PlayFileRequest * obj )
 
     if( state_ == CONNECTED_BUSY )
     {
-        callback_consume( simple_voip::create_reject_response( obj->job_id, 0,
+        callback_consume( simple_voip::create_reject_response( obj->req_id, 0,
                 "cannot process request, busy with processing request " + std::to_string( current_req_id_ ) ) );
 
         delete obj;
         return;
     }
 
-    set_current_job_id( obj->job_id );
+    set_current_job_id( obj->req_id );
 
     voips_->consume( obj );
 
@@ -138,31 +138,31 @@ void Call::handle( const simple_voip::DropRequest * obj )
     case IDLE:
     case WAITING_DIALER_FREE:
 
-        callback_consume( simple_voip::create_drop_response( obj->job_id ) );
+        callback_consume( simple_voip::create_drop_response( obj->req_id ) );
         delete obj;
         next_state( DONE );
         break;
 
     case WAITING_INITIATE_CALL_RESP:
-        set_current_job_id( obj->job_id );
+        set_current_job_id( obj->req_id );
         delete obj;
         next_state( CANCELLED_IN_WICR );
         break;
 
     case WAITING_CONNECTED:
-        set_current_job_id( obj->job_id );
+        set_current_job_id( obj->req_id );
         voips_->consume( obj );
         next_state( CANCELLED_IN_WC );
         break;
 
     case CONNECTED:
-        set_current_job_id( obj->job_id );
+        set_current_job_id( obj->req_id );
         voips_->consume( obj );
         next_state( CANCELLED_IN_C );
         break;
 
     case CONNECTED_BUSY:
-        set_current_job_id( obj->job_id );
+        set_current_job_id( obj->req_id );
         voips_->consume( obj );
         next_state( CANCELLED_IN_CB );
         break;
@@ -464,11 +464,11 @@ void Call::trace_state_switch() const
     dummy_log_debug( CLASS_ID, "switched to %s", to_c_str( state_ ) );
 }
 
-void Call::set_current_job_id( uint32_t job_id )
+void Call::set_current_job_id( uint32_t req_id )
 {
     ASSERT( current_req_id_ == 0 );
 
-    current_req_id_ = job_id;
+    current_req_id_ = req_id;
 }
 
 uint32_t Call::get_current_job_id_and_invalidate()
@@ -486,7 +486,7 @@ void Call::validate_and_reset_response_job_id( const simple_voip::ResponseObject
 {
     ASSERT( current_req_id_ != 0 );
 
-    ASSERT( current_req_id_ == resp->job_id );
+    ASSERT( current_req_id_ == resp->req_id );
 
     current_req_id_ = 0;
 }

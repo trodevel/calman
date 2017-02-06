@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5628 $ $Date:: 2017-01-30 #$ $Author: serge $
+// $Revision: 5691 $ $Date:: 2017-02-06 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -170,7 +170,7 @@ void CallManager::handle( const simple_voip::IObject* req )
     //delete req; // no need to delete request, because it will be forwarded
 }
 
-void CallManager::check_call_end( Call* call, uint32_t call_id, uint32_t job_id )
+void CallManager::check_call_end( Call* call, uint32_t call_id, uint32_t req_id )
 {
     if( call->is_completed() )
     {
@@ -178,7 +178,7 @@ void CallManager::check_call_end( Call* call, uint32_t call_id, uint32_t job_id 
 
         num_active_jobs_--;
 
-        dummy_log_debug( MODULENAME, "removing call_id %u, job_id %u", call_id, job_id );
+        dummy_log_debug( MODULENAME, "removing call_id %u, req_id %u", call_id, req_id );
 
         if( call_id )
         {
@@ -187,11 +187,11 @@ void CallManager::check_call_end( Call* call, uint32_t call_id, uint32_t job_id 
             dummy_log_debug( MODULENAME, "check_call_end: call_id %u - %s", ( n > 0 ) ? "DELETED" : "not found" );
         }
 
-        if( job_id )
+        if( req_id )
         {
-            auto n = map_job_id_to_call_.erase( job_id );
+            auto n = map_job_id_to_call_.erase( req_id );
 
-            dummy_log_debug( MODULENAME, "check_call_end: job_id %u - %s", ( n > 0 ) ? "DELETED" : "not found" );
+            dummy_log_debug( MODULENAME, "check_call_end: req_id %u - %s", ( n > 0 ) ? "DELETED" : "not found" );
         }
 
         delete call;
@@ -217,17 +217,17 @@ void CallManager::process_jobs()
 
         auto job_pair = job_queue_.front();
 
-        auto job_id = job_pair.first;
+        auto req_id = job_pair.first;
 
-        dummy_log_debug( MODULENAME, "process_jobs: taking job id %u from queue", job_id );
+        dummy_log_debug( MODULENAME, "process_jobs: taking job id %u from queue", req_id );
 
         job_queue_.pop_front();
 
-        auto it = map_job_id_to_call_.find( job_id );
+        auto it = map_job_id_to_call_.find( req_id );
 
         if( it == map_job_id_to_call_.end() )
         {
-            dummy_log_debug( MODULENAME, "process_jobs: cannot find job id %u", job_id );
+            dummy_log_debug( MODULENAME, "process_jobs: cannot find job id %u", req_id );
 
             continue;
         }
@@ -246,23 +246,23 @@ void CallManager::handle( const simple_voip::InitiateCallRequest * req )
 
     try
     {
-        auto it = map_job_id_to_call_.find( req->job_id );
+        auto it = map_job_id_to_call_.find( req->req_id );
 
         if( it != map_job_id_to_call_.end() )
         {
-            dummy_log_error( MODULENAME, "job %u already exists", req->job_id );
+            dummy_log_error( MODULENAME, "job %u already exists", req->req_id );
 
-            send_error_response( req->job_id, "job already exists" );
+            send_error_response( req->req_id, "job already exists" );
             return;
         }
 
         auto call = new Call( req->party, callback_, voips_, this );
 
-        job_queue_.push_back( std::make_pair( req->job_id, req ) );
+        job_queue_.push_back( std::make_pair( req->req_id, req ) );
 
-        map_job_id_to_call_.insert( MapJobIdToCall::value_type( req->job_id, call ) );
+        map_job_id_to_call_.insert( MapJobIdToCall::value_type( req->req_id, call ) );
 
-        dummy_log_debug( MODULENAME, "insert_job: inserted job %u", req->job_id );
+        dummy_log_debug( MODULENAME, "insert_job: inserted job %u", req->req_id );
 
         process_jobs();
     }
@@ -324,7 +324,7 @@ void CallManager::forward_request_to_call( const _OBJ * obj )
 
     auto call = it->second;
 
-    auto _b = map_job_id_to_call_.insert( MapJobIdToCall::value_type( obj->job_id, call ) ).second;
+    auto _b = map_job_id_to_call_.insert( MapJobIdToCall::value_type( obj->req_id, call ) ).second;
 
     ASSERT( _b );
 
@@ -336,11 +336,11 @@ void CallManager::forward_request_to_call( const _OBJ * obj )
 template <class _OBJ>
 void CallManager::forward_response_to_call( const _OBJ * obj )
 {
-    auto it = map_job_id_to_call_.find( obj->job_id );
+    auto it = map_job_id_to_call_.find( obj->req_id );
 
     if( it == map_job_id_to_call_.end() )
     {
-        dummy_log_info( MODULENAME, "cannot forward to call, job id %u not found", obj->job_id );
+        dummy_log_info( MODULENAME, "cannot forward to call, job id %u not found", obj->req_id );
         return;
     }
 
@@ -350,7 +350,7 @@ void CallManager::forward_response_to_call( const _OBJ * obj )
 
     call->handle( obj );
 
-    check_call_end( call, 0, obj->job_id );
+    check_call_end( call, 0, obj->req_id );
 }
 
 template <class _OBJ>
@@ -434,9 +434,9 @@ void CallManager::handle( const simple_voip::DtmfTone * obj )
     forward_event_to_call( obj );
 }
 
-void CallManager::send_error_response( uint32_t job_id, const std::string & descr )
+void CallManager::send_error_response( uint32_t req_id, const std::string & descr )
 {
-    callback_consume( simple_voip::create_error_response( job_id, 0, descr ) );
+    callback_consume( simple_voip::create_error_response( req_id, 0, descr ) );
 }
 
 void CallManager::callback_consume( const simple_voip::CallbackObject * req )
