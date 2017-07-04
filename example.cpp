@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5691 $ $Date:: 2017-02-06 #$ $Author: serge $
+// $Revision: 7075 $ $Date:: 2017-07-04 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -28,23 +28,18 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <vector>           // std::vector
 
 #include "../simple_voip/i_simple_voip_callback.h"  // simple_voip::ISimpleVoipCallback
-#include "call_manager.h"               // calman::CallManager
-#include "../simple_voip/object_factory.h"          // simple_voip::create_message_t
+#include "call_manager.h"                       // calman::CallManager
+#include "../simple_voip/object_factory.h"      // simple_voip::create_message_t
 
 #include "../dialer_detect/dialer_detector.h"   // dialer_detector::DialerDetector
 #include "../skype_service/skype_service.h"     // SkypeService
-#include "../utils/dummy_logger.h"      // dummy_log_set_log_level
-#include "../scheduler/scheduler.h"     // Scheduler
-
-namespace sched
-{
-extern unsigned int MODULE_ID;
-}
+#include "../utils/dummy_logger.h"              // dummy_log_set_log_level
+#include "../scheduler/scheduler.h"             // Scheduler
 
 class Callback: virtual public simple_voip::ISimpleVoipCallback
 {
 public:
-    Callback( simple_voip::ISimpleVoip * calman, sched::Scheduler * sched ):
+    Callback( simple_voip::ISimpleVoip * calman, scheduler::Scheduler * sched ):
         calman_( calman ),
         sched_( sched )
     {
@@ -200,36 +195,28 @@ private:
 
 private:
     simple_voip::ISimpleVoip    * calman_;
-    sched::Scheduler            * sched_;
+    scheduler::Scheduler        * sched_;
 };
-
-void scheduler_thread( sched::Scheduler * sched )
-{
-    sched->start( true );
-}
 
 int main()
 {
-    sched::MODULE_ID            = dummy_logger::register_module( "Scheduler" );
+    //scheduler::MODULE_ID            = dummy_logger::register_module( "Scheduler" );
     calman::Call::CLASS_ID      = dummy_logger::register_module( "Call" );
 
-    dummy_logger::set_log_level( sched::MODULE_ID,          log_levels_log4j::ERROR );
+    //dummy_logger::set_log_level( scheduler::MODULE_ID,          log_levels_log4j::ERROR );
     dummy_logger::set_log_level( calman::Call::CLASS_ID,    log_levels_log4j::TRACE );
     dummy_logger::set_log_level( log_levels_log4j::DEBUG );
 
     skype_service::SkypeService     sio;
     dialer_detector::DialerDetector dialer( 16000 );
     calman::CallManager             calman;
-    sched::Scheduler                sched;
+    scheduler::Scheduler            sched( scheduler::Duration( std::chrono::milliseconds( 1 ) ) );
 
     uint16_t                    port = 3217;
 
     calman::Config              cfg;
 
     cfg.sleep_time_ms   = 3;
-
-    sched.load_config();
-    sched.init();
 
     {
         bool b = calman.init( & dialer, cfg );
@@ -272,7 +259,8 @@ int main()
     std::vector< std::thread > tg;
 
     tg.push_back( std::thread( std::bind( &Callback::control_thread, &test ) ) );
-    tg.push_back( std::thread( std::bind( &scheduler_thread, &sched ) ) );
+
+    sched.run();
 
     for( auto & t : tg )
         t.join();

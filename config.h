@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5581 $ $Date:: 2017-01-19 #$ $Author: serge $
+// $Revision: 5739 $ $Date:: 2017-02-09 #$ $Author: serge $
 
 #ifndef CALMAN_CONFIG_H
 #define CALMAN_CONFIG_H
