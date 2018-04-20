@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7075 $ $Date:: 2017-07-04 #$ $Author: serge $
+// $Revision: 7092 $ $Date:: 2017-07-06 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>

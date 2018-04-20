@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5739 $ $Date:: 2017-02-09 #$ $Author: serge $
+// $Revision: 8915 $ $Date:: 2018-04-19 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -35,7 +35,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 NAMESPACE_CALMAN_START
 
 CallManager::CallManager():
-    WorkerBase( this ),
     num_active_jobs_( 0 ), voips_( nullptr ), callback_( nullptr )
 {
 }
@@ -86,7 +85,16 @@ bool CallManager::register_callback( simple_voip::ISimpleVoipCallback * callback
 
 void CallManager::consume( const simple_voip::ForwardObject* obj )
 {
-    WorkerBase::consume( obj );
+    MUTEX_SCOPE_LOCK( mutex_ );
+
+    if( typeid( *obj ) == typeid( simple_voip::InitiateCallRequest ) )
+    {
+        handle( dynamic_cast< const simple_voip::InitiateCallRequest *>( obj ) );
+    }
+    else
+    {
+        voips_->consume( obj );
+    }
 }
 
 void CallManager::consume( const simple_voip::CallbackObject* obj )
@@ -244,34 +252,39 @@ void CallManager::handle( const simple_voip::InitiateCallRequest * req )
 {
     // private: no mutex lock
 
-    try
+    dummy_log_debug( MODULENAME, "insert_job: active calls %u, active requests %u, pending requests %u",
+            active_call_ids_.size(), active_request_ids_.size(), job_queue_.size() );
+
+    if( active_call_ids_.size() >= cfg_.max_active_jobs )
     {
-        auto it = map_job_id_to_call_.find( req->req_id );
-
-        if( it != map_job_id_to_call_.end() )
-        {
-            dummy_log_error( MODULENAME, "job %u already exists", req->req_id );
-
-            send_error_response( req->req_id, "job already exists" );
-            return;
-        }
-
-        auto call = new Call( req->party, callback_, voips_, this );
-
         job_queue_.push_back( std::make_pair( req->req_id, req ) );
-
-        map_job_id_to_call_.insert( MapJobIdToCall::value_type( req->req_id, call ) );
 
         dummy_log_debug( MODULENAME, "insert_job: inserted job %u", req->req_id );
 
-        process_jobs();
+        return;
     }
-    catch( std::exception & e )
+
+    if( active_request_ids_.size() >= cfg_.max_active_jobs )
     {
-        dummy_log_fatal( MODULENAME, "insert_job: error - %s", e.what() );
+        job_queue_.push_back( std::make_pair( req->req_id, req ) );
+
+        dummy_log_debug( MODULENAME, "insert_job: inserted job %u", req->req_id );
+
+        return;
+    }
+
+    auto res = active_request_ids_.insert( req->req_id ).second;
+
+    if( res == false )
+    {
+        dummy_log_error( MODULENAME, "request %u already exists", req->req_id );
 
         ASSERT( 0 );
+
+        return;
     }
+
+    voips_->consume( req );
 }
 
 void CallManager::start()

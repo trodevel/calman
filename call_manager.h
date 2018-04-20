@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5739 $ $Date:: 2017-02-09 #$ $Author: serge $
+// $Revision: 8913 $ $Date:: 2018-04-19 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -28,13 +28,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <list>                             // std::list
 #include <mutex>                            // std::mutex
 #include <map>                              // std::map
+#include <set>                              // std::set
 
 #include "call.h"                           // Call
 #include "config.h"                         // Config
 #include "../simple_voip/i_simple_voip.h"   // simple_voip::ISimpleVoip
 #include "../simple_voip/i_simple_voip_callback.h"     // ISimpleVoipCallback
-#include "../threcon/i_controllable.h"      // IControllable
-#include "../workt/worker_t.h"              // WorkerT
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
@@ -42,15 +41,10 @@ NAMESPACE_CALMAN_START
 
 class CallManager;
 
-typedef workt::WorkerT< const simple_voip::IObject*, CallManager> WorkerBase;
-
-class CallManager: public WorkerBase,
+class CallManager:
     virtual public simple_voip::ISimpleVoip,
-    virtual public simple_voip::ISimpleVoipCallback,
-    virtual public threcon::IControllable
+    virtual public simple_voip::ISimpleVoipCallback
 {
-    friend WorkerBase;
-
 public:
     CallManager();
     ~CallManager();
@@ -76,6 +70,8 @@ private:
 
     typedef std::list<std::pair<uint32_t,const simple_voip::InitiateCallRequest*>>  JobQueue;
 
+    typedef std::set<uint32_t>              SetReqIds;
+    typedef std::set<uint32_t>              SetCallIds;
     typedef std::map<uint32_t, Call*>         MapIdToCall;
     typedef std::map<uint32_t, Call*>         MapJobIdToCall;
 
@@ -130,6 +126,9 @@ private:
 
     simple_voip::ISimpleVoip  * voips_;
     simple_voip::ISimpleVoipCallback        * callback_;
+
+    SetReqIds                   active_request_ids_;
+    SetCallIds                  active_call_ids_;
 
     MapIdToCall                 map_call_id_to_call_;
     MapJobIdToCall              map_job_id_to_call_;

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5739 $ $Date:: 2017-02-09 #$ $Author: serge $
+// $Revision: 8678 $ $Date:: 2018-02-02 #$ $Author: serge $
 
 #ifndef CALMAN_CALL_H
 #define CALMAN_CALL_H
@@ -92,7 +92,6 @@ public:
 
 private:
     void next_state( state_e state );
-    void trace_state_switch() const;
 
     void set_current_job_id( uint32_t job_id );
     uint32_t get_current_job_id_and_invalidate();

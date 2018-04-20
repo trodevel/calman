@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5739 $ $Date:: 2017-02-09 #$ $Author: serge $
+// $Revision: 8678 $ $Date:: 2018-02-02 #$ $Author: serge $
 
 #include "call.h"                       // self
 
@@ -454,14 +454,9 @@ void Call::handle( const simple_voip::DtmfTone * obj )
 
 void Call::next_state( state_e state )
 {
+    dummy_log_debug( CLASS_ID, "switched state %s --> %s", to_c_str( state_ ), to_c_str( state ) );
+
     state_  = state;
-
-    trace_state_switch();
-}
-
-void Call::trace_state_switch() const
-{
-    dummy_log_debug( CLASS_ID, "switched to %s", to_c_str( state_ ) );
 }
 
 void Call::set_current_job_id( uint32_t req_id )
