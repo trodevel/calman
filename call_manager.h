@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 8913 $ $Date:: 2018-04-19 #$ $Author: serge $
+// $Revision: 8945 $ $Date:: 2018-04-20 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -30,8 +30,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <map>                              // std::map
 #include <set>                              // std::set
 
-#include "call.h"                           // Call
 #include "config.h"                         // Config
+#include "simple_voip/objects.h"            // simple_voip::InitiateCallRequest
 #include "../simple_voip/i_simple_voip.h"   // simple_voip::ISimpleVoip
 #include "../simple_voip/i_simple_voip_callback.h"     // ISimpleVoipCallback
 
@@ -59,79 +59,53 @@ public:
     // interface ISimpleVoipCallback
     void consume( const simple_voip::CallbackObject * obj );
 
-    void start();
-
     // interface threcon::IControllable
     bool shutdown();
 
-    void map_call_id_to_call( uint32_t call_id, Call * call );
-
 private:
 
-    typedef std::list<std::pair<uint32_t,const simple_voip::InitiateCallRequest*>>  JobQueue;
+    typedef std::list<const simple_voip::InitiateCallRequest*>  RequestQueue;
 
     typedef std::set<uint32_t>              SetReqIds;
     typedef std::set<uint32_t>              SetCallIds;
-    typedef std::map<uint32_t, Call*>         MapIdToCall;
-    typedef std::map<uint32_t, Call*>         MapJobIdToCall;
+    typedef std::map<uint32_t, uint32_t>    MapReqIdToCallId;
 
 private:
 
-    // ServerT interface
-    void handle( const simple_voip::IObject* req );
+    void process( const simple_voip::InitiateCallRequest * req );
 
     // simple_voip::ISimpleVoip interface
     void handle( const simple_voip::InitiateCallRequest * req );
     void handle( const simple_voip::DropRequest * req );
-    void handle( const simple_voip::PlayFileRequest * req );
 
     // interface ISimpleVoipCallback
     void handle( const simple_voip::InitiateCallResponse * obj );
     void handle( const simple_voip::RejectResponse * obj );
     void handle( const simple_voip::ErrorResponse * obj );
     void handle( const simple_voip::DropResponse * obj );
-    void handle( const simple_voip::Dialing * obj );
-    void handle( const simple_voip::Ringing * obj );
-    void handle( const simple_voip::Connected * obj );
-    void handle( const simple_voip::CallDuration * obj );
     void handle( const simple_voip::ConnectionLost * obj );
     void handle( const simple_voip::Failed * obj );
-    void handle( const simple_voip::PlayFileResponse * obj );
-    void handle( const simple_voip::DtmfTone * obj );
 
-    template <class _OBJ>
-    void forward_request_to_call( const _OBJ * obj );
+    void erase_failed_drop_request( uint32_t req_id );
+    void handle_failed_call( uint32_t call_id );
 
-    template <class _OBJ>
-    void forward_response_to_call( const _OBJ * obj );
+    uint32_t get_num_of_activities() const;
 
-    template <class OBJ>
-    void forward_event_to_call( const OBJ * obj );
-
-    void check_call_end( Call* call, uint32_t call_id, uint32_t job_id );
     void process_jobs();
-
-    void send_error_response( uint32_t job_id, const std::string & descr );
-
-    void callback_consume( const simple_voip::CallbackObject * req );
 
 private:
     mutable std::mutex          mutex_;
 
     Config                      cfg_;
 
-    uint32_t                    num_active_jobs_;
-
-    JobQueue                    job_queue_;
+    RequestQueue                request_queue_;
 
     simple_voip::ISimpleVoip  * voips_;
     simple_voip::ISimpleVoipCallback        * callback_;
 
     SetReqIds                   active_request_ids_;
     SetCallIds                  active_call_ids_;
-
-    MapIdToCall                 map_call_id_to_call_;
-    MapJobIdToCall              map_job_id_to_call_;
+    MapReqIdToCallId            map_drop_req_id_to_call_id_;
 };
 
 NAMESPACE_CALMAN_END

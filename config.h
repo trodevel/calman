@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 5739 $ $Date:: 2017-02-09 #$ $Author: serge $
+// $Revision: 8939 $ $Date:: 2018-04-20 #$ $Author: serge $
 
 #ifndef CALMAN_CONFIG_H
 #define CALMAN_CONFIG_H
@@ -32,8 +32,7 @@ NAMESPACE_CALMAN_START
 
 struct Config
 {
-    uint32_t    sleep_time_ms;  // try 3 ms
-    uint32_t    max_active_jobs;    // 1
+    uint32_t    max_active_calls;    // 1
 };
 
 NAMESPACE_CALMAN_END
