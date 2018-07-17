@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 8945 $ $Date:: 2018-04-20 #$ $Author: serge $
+// $Revision: 9534 $ $Date:: 2018-07-17 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -32,8 +32,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "config.h"                         // Config
 #include "simple_voip/objects.h"            // simple_voip::InitiateCallRequest
-#include "../simple_voip/i_simple_voip.h"   // simple_voip::ISimpleVoip
-#include "../simple_voip/i_simple_voip_callback.h"     // ISimpleVoipCallback
+#include "simple_voip/i_simple_voip.h"      // simple_voip::ISimpleVoip
+#include "simple_voip/i_simple_voip_callback.h" // ISimpleVoipCallback
 
 #include "namespace_lib.h"              // NAMESPACE_CALMAN_START
 
@@ -49,9 +49,11 @@ public:
     CallManager();
     ~CallManager();
 
-    bool init( simple_voip::ISimpleVoip * voips, const Config & cfg );
-
-    bool register_callback( simple_voip::ISimpleVoipCallback * callback );
+    bool init(
+            unsigned int                        log_id,
+            simple_voip::ISimpleVoip            * voips,
+            simple_voip::ISimpleVoipCallback    * callback,
+            const Config                        & cfg );
 
     // interface ISimpleVoip
     void consume( const simple_voip::ForwardObject* obj );
@@ -75,16 +77,16 @@ private:
     void process( const simple_voip::InitiateCallRequest * req );
 
     // simple_voip::ISimpleVoip interface
-    void handle( const simple_voip::InitiateCallRequest * req );
-    void handle( const simple_voip::DropRequest * req );
+    void handle_InitiateCallRequest( const simple_voip::ForwardObject * req );
+    void handle_DropRequest( const simple_voip::ForwardObject * req );
 
     // interface ISimpleVoipCallback
-    void handle( const simple_voip::InitiateCallResponse * obj );
-    void handle( const simple_voip::RejectResponse * obj );
-    void handle( const simple_voip::ErrorResponse * obj );
-    void handle( const simple_voip::DropResponse * obj );
-    void handle( const simple_voip::ConnectionLost * obj );
-    void handle( const simple_voip::Failed * obj );
+    void handle_InitiateCallResponse( const simple_voip::CallbackObject * obj );
+    void handle_RejectResponse( const simple_voip::CallbackObject * obj );
+    void handle_ErrorResponse( const simple_voip::CallbackObject * obj );
+    void handle_DropResponse( const simple_voip::CallbackObject * obj );
+    void handle_ConnectionLost( const simple_voip::CallbackObject * obj );
+    void handle_Failed( const simple_voip::CallbackObject * obj );
 
     void erase_failed_drop_request( uint32_t req_id );
     void handle_failed_call( uint32_t call_id );
@@ -93,8 +95,12 @@ private:
 
     void process_jobs();
 
+    void log_stat();
+
 private:
     mutable std::mutex          mutex_;
+
+    unsigned int                log_id_;
 
     Config                      cfg_;
 

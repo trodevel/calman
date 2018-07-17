@@ -20,19 +20,24 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 8944 $ $Date:: 2018-04-20 #$ $Author: serge $
+// $Revision: 9539 $ $Date:: 2018-07-17 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
-#include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
-#include "../utils/dummy_logger.h"      // dummy_log
-#include "../utils/assert.h"            // ASSERT
+#include <typeindex>                    // std::type_index
+#include <typeinfo>
+#include <unordered_map>
+
+#include "utils/mutex_helper.h"         // MUTEX_SCOPE_LOCK
+#include "utils/dummy_logger.h"         // dummy_log
+#include "utils/assert.h"               // ASSERT
 
 #define MODULENAME      "CallManager"
 
 NAMESPACE_CALMAN_START
 
 CallManager::CallManager():
+    log_id_( 0 ),
     voips_( nullptr ), callback_( nullptr )
 {
 }
@@ -41,43 +46,35 @@ CallManager::~CallManager()
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-//    for( auto c : map_call_id_to_call_ )
-//    {
-//        delete c.second;
-//    }
-
     request_queue_.clear();
 }
 
-bool CallManager::init( simple_voip::ISimpleVoip * voips, const Config & cfg )
+bool CallManager::init(
+        unsigned int                        log_id,
+        simple_voip::ISimpleVoip            * voips,
+        simple_voip::ISimpleVoipCallback    * callback,
+        const Config                        & cfg )
 {
-    if( voips == 0L )
+    if( voips == nullptr )
+        return false;
+
+    if( callback == nullptr )
         return false;
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( voips_ != 0L )
+    if( voips_ != nullptr )
         return false;
 
-    voips_  = voips;
-    cfg_    = cfg;
-
-    dummy_log_debug( MODULENAME, "inited" );
-
-    return true;
-}
-
-bool CallManager::register_callback( simple_voip::ISimpleVoipCallback * callback )
-{
-    if( callback == 0L )
+    if( callback_ != nullptr )
         return false;
 
-    MUTEX_SCOPE_LOCK( mutex_ );
+    log_id_     = log_id;
+    voips_      = voips;
+    callback_   = callback;
+    cfg_        = cfg;
 
-    if( callback_ != 0L )
-        return false;
-
-    callback_ = callback;
+    dummy_log_debug( log_id_, "inited" );
 
     return true;
 }
@@ -86,9 +83,25 @@ void CallManager::consume( const simple_voip::ForwardObject* obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( typeid( *obj ) == typeid( simple_voip::InitiateCallRequest ) )
+    typedef CallManager Type;
+
+    typedef void (Type::*PPMF)( const simple_voip::ForwardObject * r );
+
+#define HANDLER_MAP_ENTRY(_v)       { typeid( simple_voip::_v ),            & Type::handle_##_v }
+
+    static const std::unordered_map<std::type_index, PPMF> funcs =
     {
-        handle( dynamic_cast< const simple_voip::InitiateCallRequest *>( obj ) );
+        HANDLER_MAP_ENTRY( InitiateCallRequest ),
+        HANDLER_MAP_ENTRY( DropRequest ),
+    };
+
+#undef HANDLER_MAP_ENTRY
+
+    auto it = funcs.find( typeid( * obj ) );
+
+    if( it != funcs.end() )
+    {
+        (this->*it->second)( obj );
     }
     else
     {
@@ -100,29 +113,29 @@ void CallManager::consume( const simple_voip::CallbackObject* obj )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( typeid( *obj ) == typeid( simple_voip::InitiateCallResponse ) )
+    typedef CallManager Type;
+
+    typedef void (Type::*PPMF)( const simple_voip::CallbackObject * r );
+
+#define HANDLER_MAP_ENTRY(_v)       { typeid( simple_voip::_v ),            & Type::handle_##_v }
+
+    static const std::unordered_map<std::type_index, PPMF> funcs =
     {
-        handle( dynamic_cast< const simple_voip::InitiateCallResponse *>( obj ) );
-    }
-    else if( typeid( *obj ) == typeid( simple_voip::ErrorResponse ) )
+        HANDLER_MAP_ENTRY( InitiateCallResponse ),
+        HANDLER_MAP_ENTRY( ErrorResponse ),
+        HANDLER_MAP_ENTRY( RejectResponse ),
+        HANDLER_MAP_ENTRY( DropResponse ),
+        HANDLER_MAP_ENTRY( ConnectionLost ),
+        HANDLER_MAP_ENTRY( Failed ),
+    };
+
+#undef HANDLER_MAP_ENTRY
+
+    auto it = funcs.find( typeid( * obj ) );
+
+    if( it != funcs.end() )
     {
-        handle( dynamic_cast< const simple_voip::ErrorResponse *>( obj ) );
-    }
-    else if( typeid( *obj ) == typeid( simple_voip::RejectResponse ) )
-    {
-        handle( dynamic_cast< const simple_voip::RejectResponse *>( obj ) );
-    }
-    else if( typeid( *obj ) == typeid( simple_voip::DropResponse ) )
-    {
-        handle( dynamic_cast< const simple_voip::DropResponse *>( obj ) );
-    }
-    else if( typeid( *obj ) == typeid( simple_voip::ConnectionLost ) )
-    {
-        handle( dynamic_cast< const simple_voip::ConnectionLost *>( obj ) );
-    }
-    else if( typeid( *obj ) == typeid( simple_voip::Failed ) )
-    {
-        handle( dynamic_cast< const simple_voip::Failed *>( obj ) );
+        (this->*it->second)( obj );
     }
 
     callback_->consume( obj );
@@ -132,44 +145,26 @@ void CallManager::process_jobs()
 {
     // private: no MUTEX lock needed
 
-    dummy_log_trace( MODULENAME, "process_jobs: active calls %u, active requests %u, maximal number of active calls %u",
-                active_call_ids_.size(), active_request_ids_.size(), cfg_.max_active_calls );
+    log_stat();
 
     while( get_num_of_activities() < cfg_.max_active_calls )
     {
         if( request_queue_.empty() )
         {
-            dummy_log_debug( MODULENAME, "process_jobs: request queue is empty" );
+            dummy_log_debug( log_id_, "process_jobs: request queue is empty" );
             break;
         }
 
         auto req = request_queue_.front();
 
-        dummy_log_debug( MODULENAME, "process_jobs: taking job id %u from queue", req->req_id );
+        dummy_log_debug( log_id_, "process_jobs: taking job id %u from queue", req->req_id );
 
         request_queue_.pop_front();
 
         process( req );
     }
-}
 
-void CallManager::handle( const simple_voip::InitiateCallRequest * req )
-{
-    // private: no mutex lock
-
-    dummy_log_debug( MODULENAME, "insert_job: active calls %u, active requests %u, pending requests %u",
-            active_call_ids_.size(), active_request_ids_.size(), request_queue_.size() );
-
-    if( get_num_of_activities() >= cfg_.max_active_calls )
-    {
-        request_queue_.push_back( req );
-
-        dummy_log_debug( MODULENAME, "insert_job: inserted job %u", req->req_id );
-
-        return;
-    }
-
-    process( req );
+    log_stat();
 }
 
 void CallManager::process( const simple_voip::InitiateCallRequest * req )
@@ -180,7 +175,7 @@ void CallManager::process( const simple_voip::InitiateCallRequest * req )
 
     if( res == false )
     {
-        dummy_log_error( MODULENAME, "request %u already exists", req->req_id );
+        dummy_log_error( log_id_, "request %u already exists", req->req_id );
 
         ASSERT( 0 );
 
@@ -192,20 +187,42 @@ void CallManager::process( const simple_voip::InitiateCallRequest * req )
 
 bool CallManager::shutdown()
 {
-    dummy_log_debug( MODULENAME, "shutdown()" );
+    dummy_log_debug( log_id_, "shutdown()" );
 
     MUTEX_SCOPE_LOCK( mutex_ );
-
-    WorkerBase::shutdown();
 
     return true;
 }
 
-void CallManager::handle( const simple_voip::DropRequest * req )
+void CallManager::handle_InitiateCallRequest( const simple_voip::ForwardObject * rreq )
 {
+    auto * req = dynamic_cast< const simple_voip::InitiateCallRequest *>( rreq );
+
+    // private: no mutex lock
+
+    log_stat();
+
+    if( get_num_of_activities() >= cfg_.max_active_calls )
+    {
+        request_queue_.push_back( req );
+
+        dummy_log_debug( log_id_, "insert_job: inserted job %u", req->req_id );
+
+        log_stat();
+
+        return;
+    }
+
+    process( req );
+}
+
+void CallManager::handle_DropRequest( const simple_voip::ForwardObject * rreq )
+{
+    auto * req = dynamic_cast< const simple_voip::DropRequest *>( rreq );
+
     if( active_call_ids_.count( req->call_id ) == 0 )
     {
-        dummy_log_warn( MODULENAME, "unknown call id %u", req->call_id );
+        dummy_log_warn( log_id_, "unknown call id %u", req->call_id );
 
         voips_->consume( req );
 
@@ -220,8 +237,12 @@ void CallManager::handle( const simple_voip::DropRequest * req )
 }
 
 // ISimpleVoipCallback interface
-void CallManager::handle( const simple_voip::InitiateCallResponse * obj )
+void CallManager::handle_InitiateCallResponse( const simple_voip::CallbackObject * oobj )
 {
+    auto * obj = dynamic_cast< const simple_voip::InitiateCallResponse *>( oobj );
+
+    dummy_log_trace( log_id_, "initiated call: %u", obj->call_id );
+
     auto it = active_request_ids_.find( obj->req_id );
 
     if( it == active_request_ids_.end() )
@@ -233,16 +254,22 @@ void CallManager::handle( const simple_voip::InitiateCallResponse * obj )
 
     if( b == false )
     {
-        dummy_log_error( MODULENAME, "cannot insert call id %u - already exists", obj->call_id );
+        dummy_log_error( log_id_, "cannot insert call id %u - already exists", obj->call_id );
 
         ASSERT( 0 );
 
         return;
     }
+
+    dummy_log_debug( log_id_, "call id %u - active", obj->call_id );
+
+    log_stat();
 }
 
-void CallManager::handle( const simple_voip::RejectResponse * obj )
+void CallManager::handle_RejectResponse( const simple_voip::CallbackObject * oobj )
 {
+    auto * obj = dynamic_cast< const simple_voip::RejectResponse *>( oobj );
+
     auto it = active_request_ids_.find( obj->req_id );
 
     if( it == active_request_ids_.end() )
@@ -256,8 +283,10 @@ void CallManager::handle( const simple_voip::RejectResponse * obj )
     process_jobs();
 }
 
-void CallManager::handle( const simple_voip::ErrorResponse * obj )
+void CallManager::handle_ErrorResponse( const simple_voip::CallbackObject * oobj )
 {
+    auto * obj = dynamic_cast< const simple_voip::ErrorResponse *>( oobj );
+
     auto it = active_request_ids_.find( obj->req_id );
 
     if( it == active_request_ids_.end() )
@@ -271,8 +300,10 @@ void CallManager::handle( const simple_voip::ErrorResponse * obj )
     process_jobs();
 }
 
-void CallManager::handle( const simple_voip::DropResponse * obj )
+void CallManager::handle_DropResponse( const simple_voip::CallbackObject * oobj )
 {
+    auto * obj = dynamic_cast< const simple_voip::DropResponse *>( oobj );
+
     auto it = map_drop_req_id_to_call_id_.find( obj->req_id );
 
     if( it == map_drop_req_id_to_call_id_.end() )
@@ -286,7 +317,7 @@ void CallManager::handle( const simple_voip::DropResponse * obj )
 
     if( it_2 == active_call_ids_.end() )
     {
-        dummy_log_warn( MODULENAME, "unknown call id %u", call_id );
+        dummy_log_warn( log_id_, "unknown call id %u", call_id );
         return;
     }
 
@@ -295,13 +326,17 @@ void CallManager::handle( const simple_voip::DropResponse * obj )
     process_jobs();
 }
 
-void CallManager::handle( const simple_voip::ConnectionLost * obj )
+void CallManager::handle_ConnectionLost( const simple_voip::CallbackObject * oobj )
 {
+    auto * obj = dynamic_cast< const simple_voip::ConnectionLost *>( oobj );
+
     handle_failed_call( obj->call_id );
 }
 
-void CallManager::handle( const simple_voip::Failed * obj )
+void CallManager::handle_Failed( const simple_voip::CallbackObject * oobj )
 {
+    auto * obj = dynamic_cast< const simple_voip::Failed *>( oobj );
+
     handle_failed_call( obj->call_id );
 }
 
@@ -311,7 +346,7 @@ void CallManager::handle_failed_call( uint32_t call_id )
 
     if( it == active_call_ids_.end() )
     {
-        dummy_log_warn( MODULENAME, "unknown call id %u", call_id );
+        dummy_log_warn( log_id_, "unknown call id %u", call_id );
 
         return;
     }
@@ -334,6 +369,12 @@ void CallManager::erase_failed_drop_request( uint32_t req_id )
 uint32_t CallManager::get_num_of_activities() const
 {
     return active_call_ids_.size() + active_request_ids_.size();
+}
+
+void CallManager::log_stat()
+{
+    dummy_log_debug( log_id_, "stat: active calls %u, active requests %u, pending requests %u",
+            active_call_ids_.size(), active_request_ids_.size(), request_queue_.size() );
 }
 
 

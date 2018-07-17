@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7092 $ $Date:: 2017-07-06 #$ $Author: serge $
+// $Revision: 9540 $ $Date:: 2018-07-17 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -27,93 +27,36 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <atomic>           // std::atomic
 #include <vector>           // std::vector
 
-#include "../simple_voip/i_simple_voip_callback.h"  // simple_voip::ISimpleVoipCallback
 #include "call_manager.h"                       // calman::CallManager
-#include "../simple_voip/object_factory.h"      // simple_voip::create_message_t
+#include "simple_voip/objects.h"
+#include "simple_voip/str_helper.h"
+#include "simple_voip/object_factory.h"         // simple_voip::create_initiate_call_request
+#include "simple_voip/i_simple_voip_callback.h" // simple_voip::ISimpleVoipCallback
 
-#include "../dialer_detect/dialer_detector.h"   // dialer_detector::DialerDetector
-#include "../skype_service/skype_service.h"     // SkypeService
-#include "../utils/dummy_logger.h"              // dummy_log_set_log_level
-#include "../scheduler/scheduler.h"             // Scheduler
+#include "simple_voip_dummy/dummy.h"            // simple_voip_dummy::Dummy
+#include "simple_voip_dummy/init_config.h"      // simple_voip_dummy::init_config
+
+#include "utils/dummy_logger.h"              // dummy_log_set_log_level
+#include "scheduler/scheduler.h"             // Scheduler
 
 class Callback: virtual public simple_voip::ISimpleVoipCallback
 {
 public:
-    Callback( simple_voip::ISimpleVoip * calman, scheduler::Scheduler * sched ):
-        calman_( calman ),
-        sched_( sched )
+    Callback():
+        calman_( nullptr ),
+        last_req_id_( 0 )
     {
+    }
+
+    void init( simple_voip::ISimpleVoip * calman )
+    {
+        calman_ = calman;
     }
 
     // interface ISimpleVoipCallback
     void consume( const simple_voip::CallbackObject * req )
     {
-        std::cout << "got " << typeid( *req ).name() << std::endl;
-
-        if( typeid( *req ) == typeid( simple_voip::InitiateCallResponse ) )
-        {
-            std::cout << "got InitiateCallResponse"
-                    << " req_id " << dynamic_cast< const simple_voip::InitiateCallResponse *>( req )->req_id
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( simple_voip::ErrorResponse ) )
-        {
-            std::cout << "got ErrorResponse"
-                    << " req_id " << dynamic_cast< const simple_voip::ErrorResponse *>( req )->req_id
-                    << "  " << dynamic_cast< const simple_voip::ErrorResponse *>( req )->descr
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( simple_voip::RejectResponse ) )
-        {
-            std::cout << "got RejectResponse"
-                    << " req_id " << dynamic_cast< const simple_voip::RejectResponse *>( req )->req_id
-                    << " " << dynamic_cast< const simple_voip::RejectResponse *>( req )->descr
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( simple_voip::DropResponse ) )
-        {
-            std::cout << "got DropResponse"
-                    << " req_id " << dynamic_cast< const simple_voip::DropResponse *>( req )->req_id
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( simple_voip::Failed ) )
-        {
-            std::cout << "got Failed"
-                    << " call_id " << dynamic_cast< const simple_voip::Failed *>( req )->call_id
-                    << " " << dynamic_cast< const simple_voip::Failed *>( req )->descr
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( simple_voip::ConnectionLost ) )
-        {
-            std::cout << "got ConnectionLost"
-                    << " call_id " << dynamic_cast< const simple_voip::ConnectionLost *>( req )->call_id
-                    << " " << dynamic_cast< const simple_voip::ConnectionLost *>( req )->descr
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( simple_voip::Connected ) )
-        {
-            std::cout << "got Connected"
-                    << " call_id " << dynamic_cast< const simple_voip::Connected *>( req )->call_id
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( simple_voip::DtmfTone ) )
-        {
-            std::cout << "got DtmfTone"
-                    << " call_id " << dynamic_cast< const simple_voip::DtmfTone *>( req )->call_id
-                    << " tone " << static_cast<uint16_t>(
-                            dynamic_cast< const simple_voip::DtmfTone *>( req )->tone )
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( simple_voip::PlayFileResponse ) )
-        {
-            std::cout << "got PlayFileResponse"
-                    << " req_id " << dynamic_cast< const simple_voip::PlayFileResponse *>( req )->req_id
-                    << std::endl;
-        }
-        else
-        {
-            std::cout << "got unknown event" << std::endl;
-        }
+        std::cout << "got " << *req << std::endl;
 
         delete req;
     }
@@ -121,9 +64,10 @@ public:
     void control_thread()
     {
         std::cout << "type exit or quit to quit: " << std::endl;
-        std::cout << "call <req_id> <party>" << std::endl;
-        std::cout << "drop <req_id> <call_id>" << std::endl;
-        std::cout << "play <req_id> <call_id> <file>" << std::endl;
+        std::cout << "call <party>" << std::endl;
+        std::cout << "drop <call_id>" << std::endl;
+        std::cout << "play <call_id> <file>" << std::endl;
+        std::cout << "stop_play <call_id>" << std::endl;
 
         std::string input;
 
@@ -142,8 +86,6 @@ public:
         };
 
         std::cout << "exiting ..." << std::endl;
-
-        sched_->shutdown();
     }
 
 private:
@@ -160,28 +102,40 @@ private:
             }
             else if( cmd == "call" )
             {
-                uint32_t req_id;
-                std::string s;
-                stream >> req_id >> s;
+                last_req_id_++;
 
-                calman_->consume( simple_voip::create_initiate_call_request( req_id, s ) );
+                std::string s;
+                stream >> s;
+
+                calman_->consume( simple_voip::create_initiate_call_request( last_req_id_, s ) );
             }
             else if( cmd == "drop" )
             {
-                uint32_t req_id;
-                uint32_t call_id;
-                stream >> req_id >> call_id;
+                last_req_id_++;
 
-                calman_->consume( simple_voip::create_drop_request( req_id, call_id ) );
+                uint32_t call_id;
+                stream >> call_id;
+
+                calman_->consume( simple_voip::create_drop_request( last_req_id_, call_id ) );
             }
             else if( cmd == "play" )
             {
-                uint32_t req_id;
+                last_req_id_++;
+
                 uint32_t call_id;
                 std::string filename;
-                stream >> req_id >> call_id >> filename;
+                stream >> call_id >> filename;
 
-                calman_->consume( simple_voip::create_play_file_request( req_id, call_id, filename ) );
+                calman_->consume( simple_voip::create_play_file_request( last_req_id_, call_id, filename ) );
+            }
+            else if( cmd == "stop_play" )
+            {
+                last_req_id_++;
+
+                uint32_t call_id;
+                stream >> call_id;
+
+                calman_->consume( simple_voip::create_play_file_stop_request( last_req_id_, call_id ) );
             }
             else
                 std::cout << "ERROR: unknown command '" << cmd << "'" << std::endl;
@@ -195,66 +149,71 @@ private:
 
 private:
     simple_voip::ISimpleVoip    * calman_;
-    scheduler::Scheduler        * sched_;
+    uint32_t                    last_req_id_;
 };
 
 int main()
 {
-    //scheduler::MODULE_ID            = dummy_logger::register_module( "Scheduler" );
-    calman::Call::CLASS_ID      = dummy_logger::register_module( "Call" );
-
-    //dummy_logger::set_log_level( scheduler::MODULE_ID,          log_levels_log4j::ERROR );
-    dummy_logger::set_log_level( calman::Call::CLASS_ID,    log_levels_log4j::TRACE );
     dummy_logger::set_log_level( log_levels_log4j::DEBUG );
 
-    skype_service::SkypeService     sio;
-    dialer_detector::DialerDetector dialer( 16000 );
-    calman::CallManager             calman;
+    simple_voip_dummy::Dummy        dialer;
     scheduler::Scheduler            sched( scheduler::Duration( std::chrono::milliseconds( 1 ) ) );
-
-    uint16_t                    port = 3217;
+    calman::CallManager             calman;
+    Callback test;
 
     calman::Config              cfg;
 
-    cfg.sleep_time_ms   = 3;
+    cfg.max_active_calls   = 1;
+
+    simple_voip_dummy::Config config;
+
+    config_reader::ConfigReader cr;
+
+    std::string config_file( "voip_config.ini" );
+
+    if( cr.init( config_file ) == false )
+    {
+        std::cerr << "ERROR: cannot read config file " + config_file << std::endl;
+
+        return EXIT_FAILURE;
+    }
+    else
+    {
+        std::cout << "loaded config file " + config_file << std::endl;
+    }
+
+    simple_voip_dummy::init_config( & config, cr );
+
+    std::string error_msg;
+
+    auto log_id_calman      = dummy_logger::register_module( "CallManager" );
+    auto log_id_dummy       = dummy_logger::register_module( "SimpleVoipDummy" );
+    auto log_id_call        = dummy_logger::register_module( "Call" );
+
+    dummy_logger::set_log_level( log_id_calman,     log_levels_log4j::TRACE );
+    dummy_logger::set_log_level( log_id_dummy,      log_levels_log4j::INFO );
+    dummy_logger::set_log_level( log_id_call,       log_levels_log4j::TRACE );
+
+    test.init( & calman );
+
+    bool b = dialer.init( log_id_dummy, log_id_call, config, & calman, & sched, & error_msg );
+    if( b == false )
+    {
+        std::cout << "cannot initialize voip module: " << error_msg << std::endl;
+        return EXIT_FAILURE;
+    }
 
     {
-        bool b = calman.init( & dialer, cfg );
+        bool b = calman.init( log_id_calman, & dialer, & test, cfg );
         if( !b )
         {
             std::cout << "cannot initialize Calman" << std::endl;
-            return 0;
+            return EXIT_FAILURE;
         }
     }
 
-    {
-        bool b = dialer.init( & sio, & sched, port );
-        if( !b )
-        {
-            std::cout << "cannot initialize Dialer" << std::endl;
-            return 0;
-        }
-
-        dialer.register_callback( & calman );
-    }
-
-    {
-        bool b = sio.init();
-
-        if( !b )
-        {
-            std::cout << "cannot initialize SkypeService - " << sio.get_error_msg() << std::endl;
-            return 0;
-        }
-
-        sio.register_callback( & dialer );
-    }
-
-    Callback test( & calman, & sched );
-    calman.register_callback( &test );
-
+    sched.run();
     dialer.start();
-    calman.start();
 
     std::vector< std::thread > tg;
 
@@ -265,8 +224,9 @@ int main()
     for( auto & t : tg )
         t.join();
 
-    dialer.DialerDetector::shutdown();
+    dialer.shutdown();
     calman.shutdown();
+    sched.shutdown();
 
     std::cout << "Done! =)" << std::endl;
 
