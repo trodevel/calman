@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 9539 $ $Date:: 2018-07-17 #$ $Author: serge $
+// $Revision: 9561 $ $Date:: 2018-07-18 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -53,7 +53,8 @@ bool CallManager::init(
         unsigned int                        log_id,
         simple_voip::ISimpleVoip            * voips,
         simple_voip::ISimpleVoipCallback    * callback,
-        const Config                        & cfg )
+        const Config                        & cfg,
+        std::string                         * error_msg )
 {
     if( voips == nullptr )
         return false;
@@ -74,7 +75,13 @@ bool CallManager::init(
     callback_   = callback;
     cfg_        = cfg;
 
-    dummy_log_debug( log_id_, "inited" );
+    if( cfg_.max_active_calls < 1 )
+    {
+        * error_msg = "max_active_call < 1";
+        return false;
+    }
+
+    dummy_log_debug( log_id_, "inited, max_active_calls=%u", cfg_.max_active_calls );
 
     return true;
 }
@@ -246,7 +253,10 @@ void CallManager::handle_InitiateCallResponse( const simple_voip::CallbackObject
     auto it = active_request_ids_.find( obj->req_id );
 
     if( it == active_request_ids_.end() )
+    {
+        dummy_log_error( log_id_, "unknown call id %u", obj->call_id );
         return;
+    }
 
     active_request_ids_.erase( it );
 
@@ -342,6 +352,8 @@ void CallManager::handle_Failed( const simple_voip::CallbackObject * oobj )
 
 void CallManager::handle_failed_call( uint32_t call_id )
 {
+    dummy_log_debug( log_id_, "failed call id %u", call_id );
+
     auto it = active_call_ids_.find( call_id );
 
     if( it == active_call_ids_.end() )

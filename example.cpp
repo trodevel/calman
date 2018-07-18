@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 9540 $ $Date:: 2018-07-17 #$ $Author: serge $
+// $Revision: 9554 $ $Date:: 2018-07-18 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -152,8 +152,24 @@ private:
     uint32_t                    last_req_id_;
 };
 
-int main()
+int main( int argc, char **argv )
 {
+    unsigned max_active_calls = 1;
+
+    if( argc > 1 )
+    {
+        max_active_calls = std::stoi( argv[1] );
+
+        if( max_active_calls < 1 || max_active_calls > 10 )
+        {
+            std::cerr << "ERROR: max_active_calls not [1; 10] -  " << max_active_calls << std::endl;
+
+            return EXIT_FAILURE;
+        }
+    }
+
+    std::cout << "max_active_calls = " << max_active_calls << std::endl;
+
     dummy_logger::set_log_level( log_levels_log4j::DEBUG );
 
     simple_voip_dummy::Dummy        dialer;
@@ -163,7 +179,7 @@ int main()
 
     calman::Config              cfg;
 
-    cfg.max_active_calls   = 1;
+    cfg.max_active_calls   = max_active_calls;
 
     simple_voip_dummy::Config config;
 
@@ -189,10 +205,14 @@ int main()
     auto log_id_calman      = dummy_logger::register_module( "CallManager" );
     auto log_id_dummy       = dummy_logger::register_module( "SimpleVoipDummy" );
     auto log_id_call        = dummy_logger::register_module( "Call" );
+    auto log_id_sched       = dummy_logger::register_module( "Scheduler" );
 
     dummy_logger::set_log_level( log_id_calman,     log_levels_log4j::TRACE );
     dummy_logger::set_log_level( log_id_dummy,      log_levels_log4j::INFO );
     dummy_logger::set_log_level( log_id_call,       log_levels_log4j::TRACE );
+    dummy_logger::set_log_level( log_id_sched,      log_levels_log4j::TRACE );
+
+    sched.init_log( log_id_sched );
 
     test.init( & calman );
 
@@ -204,15 +224,14 @@ int main()
     }
 
     {
-        bool b = calman.init( log_id_calman, & dialer, & test, cfg );
+        bool b = calman.init( log_id_calman, & dialer, & test, cfg, & error_msg );
         if( !b )
         {
-            std::cout << "cannot initialize Calman" << std::endl;
+            std::cout << "cannot initialize Calman: " << error_msg << std::endl;
             return EXIT_FAILURE;
         }
     }
 
-    sched.run();
     dialer.start();
 
     std::vector< std::thread > tg;

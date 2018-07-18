@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 9534 $ $Date:: 2018-07-17 #$ $Author: serge $
+// $Revision: 9554 $ $Date:: 2018-07-18 #$ $Author: serge $
 
 #ifndef CALL_MANAGER_H
 #define CALL_MANAGER_H
@@ -53,7 +53,8 @@ public:
             unsigned int                        log_id,
             simple_voip::ISimpleVoip            * voips,
             simple_voip::ISimpleVoipCallback    * callback,
-            const Config                        & cfg );
+            const Config                        & cfg,
+            std::string                         * error_msg );
 
     // interface ISimpleVoip
     void consume( const simple_voip::ForwardObject* obj );
