@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 9561 $ $Date:: 2018-07-18 #$ $Author: serge $
+// $Revision: 10622 $ $Date:: 2019-03-10 #$ $Author: serge $
 
 #include "call_manager.h"               // self
 
@@ -30,7 +30,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "utils/mutex_helper.h"         // MUTEX_SCOPE_LOCK
 #include "utils/dummy_logger.h"         // dummy_log
-#include "utils/assert.h"               // ASSERT
+#include "utils/utils_assert.h"               // ASSERT
 
 #define MODULENAME      "CallManager"
 
