@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 12038 $ $Date:: 2019-09-25 #$ $Author: serge $
+// $Revision: 13958 $ $Date:: 2020-10-05 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -187,16 +187,9 @@ int main( int argc, char **argv )
 
     std::string config_file( "voip_config.ini" );
 
-    if( cr.init( config_file ) == false )
-    {
-        std::cerr << "ERROR: cannot read config file " + config_file << std::endl;
+    cr.init( config_file );
 
-        return EXIT_FAILURE;
-    }
-    else
-    {
-        std::cout << "loaded config file " + config_file << std::endl;
-    }
+    std::cout << "loaded config file " + config_file << std::endl;
 
     simple_voip_dummy::init_config( & config, cr );
 
